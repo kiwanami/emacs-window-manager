@@ -78,6 +78,7 @@
 
 ;; ○タスク
 ;; elscreen対応　→　スクリーン変更でminor-mode停止, frame-parameterのチェック ?
+;; edebugが使えない
 ;; Imenuのwhich-funcの階層メニュー対応
 ;; グローバル変数を整理してフレームに持って行くべきものを持って行く
 ;; パフォーマンスチューニング
@@ -706,7 +707,7 @@ from the given string."
 
 (defun ewm:def-plugin-history-list (frame wm winfo)
   (let ((wname (wlf:window-name winfo))
-        (buf (wlf:window-option-get winfo :buffer)))
+        (buf (get-buffer " *WM:History*")))
     (unless (and buf (buffer-live-p buf))
       (setq buf (get-buffer-create " *WM:History*"))
       (with-current-buffer buf
@@ -1052,6 +1053,102 @@ from the given string."
 
 (ewm:plugin-register 'main-prev 'ewm:def-plugin-main-prev)
 
+;;; clock / 時計
+;;;--------------------------------------------------
+
+(defvar ewm:def-plugin-clock-timer-interval 60 "Seconds for update.")
+(defvar ewm:def-plugin-clock-url "http://www.bijint.com/jp/img/clk/%H%M.jpg" "URL pattern.")
+(defvar ewm:def-plugin-clock-referer "http://www.bijint.com/jp/" "referer URL")
+
+(defvar ewm:def-plugin-clock-buffer-name " *WM:Clock*" "[internal use]")
+(defvar ewm:def-plugin-clock-timer-handle nil "[internal use]")
+(defvar ewm:def-plugin-clock-window nil "[internal use] Display window.") ; 表示するウインドウは1つであることを仮定（サイズ取得のため）
+(defvar ewm:def-plugin-clock-download-file "/tmp/wmclock.jpg"  "[internal]")
+(defvar ewm:def-plugin-clock-resized-file  "/tmp/wmclockt.jpg" "[internal]")
+
+(defun ewm:def-plugin-clock (frame wm winfo)
+  ;;bufferが生きていればバッファを表示するだけ（タイマーに任せる）
+  ;;bufferが無ければ初回更新してタイマー開始する
+  (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name)))
+    (setq ewm:def-plugin-clock-window 
+          (wlf:get-window wm (wlf:window-name winfo)))
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (ewm:def-plugin-clock-update)))
+    (unless ewm:def-plugin-clock-timer-handle
+      (setq ewm:def-plugin-clock-timer-handle
+            (run-at-time
+             ewm:def-plugin-clock-timer-interval
+             ewm:def-plugin-clock-timer-interval
+             'ewm:def-plugin-clock-timer))
+      (ewm:message "WM: 'clock' update timer started."))
+    (wlf:set-buffer wm (wlf:window-name winfo) buf)))
+
+(defun ewm:def-plugin-clock-timer ()
+  ;;bufferが死んでいれば、タイマー停止
+  ;;bufferが生きていれば更新実行
+  (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name)))
+    (if (and (ewm:managed-p) buf (buffer-live-p buf))
+        (ewm:def-plugin-clock-update)
+      (when ewm:def-plugin-clock-timer-handle
+          (cancel-timer ewm:def-plugin-clock-timer-handle)
+          (setq ewm:def-plugin-clock-timer-handle nil)
+          (ewm:message "WM: 'clock' update timer stopped.")))))
+
+(defun ewm:def-plugin-clock-update ()
+  (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name)))
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (get-buffer-create ewm:def-plugin-clock-buffer-name))
+      (with-current-buffer buf
+        (buffer-disable-undo buf)))
+    (ewm:def-plugin-clock-download)
+    buf))
+
+(defun ewm:def-plugin-clock-download ()
+  (lexical-let ((tmpbuf (get-buffer-create " *WM:Clock-temp*")))
+    (buffer-disable-undo tmpbuf)
+    (let* ((url (format-time-string 
+                 ewm:def-plugin-clock-url
+                  (current-time)))
+           (proc (start-process
+                  "WM:clockw" tmpbuf "wget"
+                  (concat "--referer=" ewm:def-plugin-clock-referer)
+                  "-O" ewm:def-plugin-clock-download-file url)))
+      (set-process-sentinel
+       proc (lambda(proc event)
+              (when (equal event "finished\n")
+                (kill-buffer tmpbuf)
+                (ewm:def-plugin-clock-resize)))))))
+
+(defun ewm:def-plugin-clock-resize ()
+  (lexical-let* 
+      ((tmpbuf (get-buffer-create " *WM:Clock-temp*")) 
+       (window ewm:def-plugin-clock-window)
+       (w (* (window-width window) (frame-char-width)))
+       (h (* (- (window-height window) 1) (frame-char-height)))
+       (proc
+        (start-process "WM:clockc" tmpbuf "convert" 
+                       "-resize" 
+                       (format "%ix%i" w h)
+                       ewm:def-plugin-clock-download-file 
+                       (concat "jpeg:" ewm:def-plugin-clock-resized-file))))
+    (set-process-sentinel
+     proc (lambda (proc event)
+            (when (equal event "finished\n")
+              (kill-buffer tmpbuf)
+              (ewm:def-plugin-clock-show)
+              )))))
+
+(defun ewm:def-plugin-clock-show ()
+  (clear-image-cache ewm:def-plugin-clock-resized-file)
+  (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
+        (img (create-image ewm:def-plugin-clock-resized-file 'jpeg)))
+    (with-current-buffer buf
+      (erase-buffer)
+      (goto-char (point-min))
+      (insert-image img))
+    ))
+
+(ewm:plugin-register 'clock 'ewm:def-plugin-clock)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
@@ -1180,6 +1277,15 @@ from the given string."
       (wlf:hide wm 'files 'history 'sub 'imenu)
       (wlf:show wm 'main))))
   (ewm:pst-update-windows))
+(defun ewm:dp-code-toggle-clock-command ()
+  (interactive)
+  (let* ((winfo (wlf:get-winfo 
+                 'history (wlf:wset-winfo-list (ewm:pst-get-wm))))
+         (options (wlf:window-options winfo)))
+    (plist-put options ':plugin 
+               (if (eq (plist-get options ':plugin) 'history-list)
+                   'clock 'history-list)))
+  (ewm:pst-update-windows))
 
 (setq ewm:dp-code-minor-mode-map 
       (ewm:define-keymap
@@ -1190,6 +1296,7 @@ from the given string."
          ("C-c s" . ewm:dp-code-navi-sub-command)
          ("C-c I" . ewm:dp-code-imenu-toggle-command)
          ("C-c S" . ewm:dp-code-sub-toggle-command)
+         ("C-c C" . ewm:dp-code-toggle-clock-command)
          ("C-c M" . ewm:dp-code-main-maximize-toggle-command))))
 
 ;;; document / Document view perspective
