@@ -687,8 +687,7 @@ from the given string."
   (if name 
       (ewm:aif (assq name ewm:plugin-alist)
           (cdr it)
-        (ewm:message "Plugin not found [%s]." name) nil
-        )))
+        (ewm:message "Plugin not found [%s]." name) nil)))
 
 (defun ewm:plugin-exec-update (frame wm)
   ;;各windowのプラグインを実行
@@ -714,8 +713,7 @@ from the given string."
         (ewm:def-plugin-history-list-mode)
         (setq buffer-read-only t)
         (buffer-disable-undo buf)
-        (hl-line-mode 1))
-      )
+        (hl-line-mode 1)))
     (with-current-buffer buf
       (unwind-protect
           (progn
@@ -739,8 +737,7 @@ from the given string."
               (setq header-line-format (format "Buffer History [%i]" (1- cnt))))
             (hl-line-highlight))
         (setq buffer-read-only t)))
-    (wlf:set-buffer wm wname buf)
-    ))
+    (wlf:set-buffer wm wname buf)))
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
 
