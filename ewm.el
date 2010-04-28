@@ -1139,7 +1139,7 @@ from the given string."
               )))))
 
 (defun ewm:def-plugin-clock-show ()
-  (clear-image-cache ewm:def-plugin-clock-resized-file)
+  (clear-image-cache)
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
         (img (create-image ewm:def-plugin-clock-resized-file 'jpeg)))
     (with-current-buffer buf
