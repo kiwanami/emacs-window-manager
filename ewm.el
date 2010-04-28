@@ -779,11 +779,12 @@ from the given string."
 ;; diredに丸投げ
 
 (defun ewm:def-plugin-dir-files (frame wm winfo) 
-  (let* ((buf (ewm:history-get-main-buffer)))
-    (with-current-buffer buf
-      (wlf:set-buffer
-       wm (wlf:window-name winfo)
-       (dired-noselect (or default-directory ".") )))))
+  (let* ((buf (ewm:history-get-main-buffer))
+         (dir (with-current-buffer buf 
+                (or default-directory ".")))
+         (dbuf (dired-noselect dir)))
+    (with-current-buffer dbuf (revert-buffer))
+    (wlf:set-buffer wm (wlf:window-name winfo) dbuf)))
 
 (ewm:plugin-register 'dir-files 'ewm:def-plugin-dir-files)
 
