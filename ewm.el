@@ -1089,11 +1089,13 @@ from the given string."
   ;;bufferが死んでいれば、タイマー停止
   ;;bufferが生きていれば更新実行
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name)))
-    (if (and (ewm:managed-p) buf (buffer-live-p buf))
+    (if (and (ewm:managed-p) buf (buffer-live-p buf) 
+             (get-buffer-window buf))
         (ewm:def-plugin-clock-update)
       (when ewm:def-plugin-clock-timer-handle
           (cancel-timer ewm:def-plugin-clock-timer-handle)
           (setq ewm:def-plugin-clock-timer-handle nil)
+          (when buf (kill-buffer buf))
           (ewm:message "WM: 'clock' update timer stopped.")))))
 
 (defun ewm:def-plugin-clock-update ()
@@ -1114,7 +1116,7 @@ from the given string."
            (proc (start-process
                   "WM:clockw" tmpbuf "wget"
                   (concat "--referer=" ewm:def-plugin-clock-referer)
-                  "-O" ewm:def-plugin-clock-download-file url)))
+                  "-q" "-O" ewm:def-plugin-clock-download-file url)))
       (set-process-sentinel
        proc (lambda(proc event)
               (when (equal event "finished\n")
@@ -1283,10 +1285,11 @@ from the given string."
   (interactive)
   (let* ((winfo (wlf:get-winfo 
                  'history (wlf:wset-winfo-list (ewm:pst-get-wm))))
-         (options (wlf:window-options winfo)))
-    (plist-put options ':plugin 
-               (if (eq (plist-get options ':plugin) 'history-list)
-                   'clock 'history-list)))
+         (options (wlf:window-options winfo))
+         (next (if (eq (plist-get options ':plugin) 'history-list)
+                   'clock 
+                 'history-list)))
+    (plist-put options ':plugin next))
   (ewm:pst-update-windows))
 
 (setq ewm:dp-code-minor-mode-map 
