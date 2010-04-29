@@ -331,10 +331,14 @@ from the given string."
   (ewm:message " # WINDOWS : %s" 
                (loop for winfo in (wlf:wset-winfo-list wm)
                      collect (wlf:window-window winfo))))
+;;ewm:$wcfg ウインドウ配置構造体
+;; wcfg  : 本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
+;; pst   : パースペクティブのインスタンスのコピー
+;; count : デバッグ用カウンタ
+(defstruct ewm:$wcfg wcfg pst count)
 
 (defun ewm:override-custom-wcfg-p (cfg)
-  (and (eq (type-of cfg) 'cons) 
-       (eq 'ewm:ad-window-configuration (car cfg))))
+  (ewm:$wcfg-p cfg))
 
 (defun ewm:override-window-cfg-change ()
   ;; window-configuration-change-hook関数
@@ -391,22 +395,22 @@ from the given string."
     (if (ewm:managed-p)
         (let ((data (ewm:pst-copy-instance)))
           (setq ad-return-value
-                (list 'ewm:ad-window-configuration cfg data 
-                      ewm:override-window-cfg-count))))))
+                (make-ewm:$wcfg :wcfg cfg :pst data 
+                      :count ewm:override-window-cfg-count))))))
 
 (defadvice window-configuration-p (around ewm:ad-override-long (cfg))
   (setq ad-return-value (or (ewm:override-custom-wcfg-p cfg) ad-do-it)))
 
 (defadvice window-configuration-frame (around ewm:ad-override-long (cfg))
   (when (ewm:override-custom-wcfg-p cfg)
-    (ad-set-arg 0 (cadr cfg)))
+    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg)))
   ad-do-it)
 
 (defadvice compare-window-configurations (around ewm:ad-override-long (cfg1 cfg2))
   (when (ewm:override-custom-wcfg-p cfg1)
-    (ad-set-arg 0 (cadr cfg1)))
+    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg1)))
   (when (ewm:override-custom-wcfg-p cfg2)
-    (ad-set-arg 1 (cadr cfg2)))
+    (ad-set-arg 1 (ewm:$wcfg-wcfg cfg2)))
   ad-do-it
   (when (and ad-return-value (ewm:managed-p))
     (ewm:message "#COMPARE-WINDOW-CONFIGURATIONS = %s" ad-return-value)
@@ -418,9 +422,9 @@ from the given string."
   (cond 
    ((ewm:override-custom-wcfg-p cfg)
     ;;管理対象であればwindowオブジェクトを元に戻す
-    (let ((pst-instance (caddr cfg))
-          (count (cadddr cfg)))
-      (ad-set-arg 0 (cadr cfg))
+    (let ((pst-instance (ewm:$wcfg-pst cfg))
+          (count (ewm:$wcfg-count cfg)))
+      (ad-set-arg 0 (ewm:$wcfg-wcfg cfg))
       (ewm:message "#SET-WINDOW-CONFIGURATION (ad-do-it)")
       ad-do-it
       (ewm:debug-windows (ewm:$pst-wm pst-instance))
