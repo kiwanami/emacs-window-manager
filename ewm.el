@@ -605,6 +605,20 @@ from the given string."
                (ewm:$pst-wm prev-pst-instance)))
     (ewm:pst-set-instance nil)))
 
+(defun ewm:pst-window-option-get (wm window-name)
+  ;;指定したウインドウのオプション用plistを取ってくる
+  (wlf:window-options 
+   (wlf:get-winfo window-name (wlf:wset-winfo-list wm))))
+
+(defun ewm:pst-window-plugin-get (wm window-name)
+  ;;指定したウインドウのプラグイン名を取ってくる
+  (plist-get (ewm:pst-window-option-get wm window-name)
+             ':plugin))
+
+(defun ewm:pst-window-plugin-set (wm window-name plugin-name)
+  ;;指定したウインドウにプラグインを設定する
+  (plist-put (ewm:pst-window-option-get wm window-name)
+             ':plugin plugin-name))
 
 ;;; Keybindings / Minor Mode
 ;;;--------------------------------------------------
@@ -1283,14 +1297,12 @@ from the given string."
   (ewm:pst-update-windows))
 (defun ewm:dp-code-toggle-clock-command ()
   (interactive)
-  (let* ((winfo (wlf:get-winfo 
-                 'history (wlf:wset-winfo-list (ewm:pst-get-wm))))
-         (options (wlf:window-options winfo))
-         (next (if (eq (plist-get options ':plugin) 'history-list)
-                   'clock 
-                 'history-list)))
-    (plist-put options ':plugin next))
-  (ewm:pst-update-windows))
+  (let* ((wm (ewm:pst-get-wm))
+         (prev (ewm:pst-window-plugin-get wm 'history))
+         (next (if (eq prev 'history-list)
+                   'clock 'history-list)))
+    (ewm:pst-window-plugin-set wm 'history next)
+    (ewm:pst-update-windows)))
 
 (setq ewm:dp-code-minor-mode-map 
       (ewm:define-keymap
