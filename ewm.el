@@ -154,6 +154,37 @@ from the given string."
       (format-time-string "Today  %H:%M:%S" time)
     (format-time-string   "%Y/%m/%d %H:%M:%S" time)))
 
+(defface ewm:face-title 
+  '((((type tty pc) (class color) (background light))
+     :foreground "green" :weight bold)
+    (((type tty pc) (class color) (background dark))
+     :foreground "yellow" :weight bold)
+    (t :height 1.5 :weight bold :inherit variable-pitch))
+  "Face for ewm titles at level 1."
+  :group 'ewm)
+
+(defface ewm:face-subtitle
+  '((((type tty pc) (class color)) :foreground "lightblue" :weight bold)
+    (t :height 1.2 :inherit variable-pitch))
+  "Face for ewm titles at level 2."
+  :group 'ewm)
+
+(defface ewm:face-item
+  '((t :inherit variable-pitch :foreground "DarkSlateBlue"))
+  "Face for ewm items."
+  :group 'ewm)
+
+(defun ewm:rt (text face)
+  (put-text-property 0 (length text) 'face face text) text)
+
+(defun ewm:rt-format (text &rest args)
+  (apply 'format (ewm:rt text 'ewm:face-item)
+         (loop for i in args
+               if (consp i)
+               collect (ewm:rt (car i) (cdr i))
+               else
+               collect (ewm:rt i 'ewm:face-subtitle))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
 
@@ -1012,7 +1043,8 @@ from the given string."
   ;;bufferが生きていれば更新実行
   (let ((buf (get-buffer ewm:def-plugin-top-buffer-name)))
     (if (and (ewm:managed-p) buf (buffer-live-p buf))
-        (ewm:def-plugin-top-update)
+        (when (= 0 (minibuffer-depth))
+          (ewm:def-plugin-top-update))
       (when ewm:def-plugin-top-timer-handle
           (cancel-timer ewm:def-plugin-top-timer-handle)
           (setq ewm:def-plugin-top-timer-handle nil)
@@ -1081,6 +1113,7 @@ from the given string."
 (defvar ewm:def-plugin-clock-window nil "[internal use] Display window.") ; 表示するウインドウは1つであることを仮定（サイズ取得のため）
 (defvar ewm:def-plugin-clock-download-file "/tmp/wmclock.jpg"  "[internal]")
 (defvar ewm:def-plugin-clock-resized-file  "/tmp/wmclockt.jpg" "[internal]")
+;;↑cygwin環境の場合は "C:/cygwin/tmp/wmclock.jpg" とかにすると良いかも
 
 (defun ewm:def-plugin-clock (frame wm winfo)
   ;;bufferが生きていればバッファを表示するだけ（タイマーに任せる）
@@ -1105,7 +1138,8 @@ from the given string."
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name)))
     (if (and (ewm:managed-p) buf (buffer-live-p buf) 
              (get-buffer-window buf))
-        (ewm:def-plugin-clock-update)
+        (when (= 0 (minibuffer-depth))
+          (ewm:def-plugin-clock-update))
       (when ewm:def-plugin-clock-timer-handle
           (cancel-timer ewm:def-plugin-clock-timer-handle)
           (setq ewm:def-plugin-clock-timer-handle nil)
@@ -1133,9 +1167,17 @@ from the given string."
                   "-q" "-O" ewm:def-plugin-clock-download-file url)))
       (set-process-sentinel
        proc (lambda(proc event)
-              (when (equal event "finished\n")
+              (cond 
+               ((string-match "exited abnormally" event)
                 (kill-buffer tmpbuf)
-                (ewm:def-plugin-clock-resize)))))))
+                (ewm:def-plugin-clock-show-text))
+               ((equal event "finished\n")
+                (kill-buffer tmpbuf)
+                (let ((f ewm:def-plugin-clock-download-file))
+                  (if (and (file-exists-p f)
+                           (< 0 (nth 7 (file-attributes f))))
+                      (ewm:def-plugin-clock-resize)
+                    (ewm:def-plugin-clock-show-text))))))))))
 
 (defun ewm:def-plugin-clock-resize ()
   (lexical-let* 
@@ -1153,18 +1195,34 @@ from the given string."
      proc (lambda (proc event)
             (when (equal event "finished\n")
               (kill-buffer tmpbuf)
-              (ewm:def-plugin-clock-show)
+              (ewm:def-plugin-clock-show-image)
               )))))
 
-(defun ewm:def-plugin-clock-show ()
+(defun ewm:def-plugin-clock-show-image ()
   (clear-image-cache)
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
         (img (create-image ewm:def-plugin-clock-resized-file 'jpeg)))
     (with-current-buffer buf
       (erase-buffer)
       (goto-char (point-min))
-      (insert-image img))
-    ))
+      (insert-image img))))
+
+(defun ewm:def-plugin-clock-show-text ()
+  (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
+        (time (current-time)))
+    (with-current-buffer buf
+      (erase-buffer)
+      (goto-char (point-min))
+      (insert 
+       (ewm:rt-format
+        "System: %s\nLoad Average: %s\n\n"
+        (system-name) (apply 'format "%.2f, %.2f, %.2f" (load-average t))))
+      (insert 
+       (ewm:rt-format
+        "Date: %s\nTime: %s\n"
+        (format-time-string "%Y/%m/%d" time)
+        (cons (format-time-string "%H:%M" time) 'ewm:face-title)))
+    )))
 
 (ewm:plugin-register 'clock 'ewm:def-plugin-clock)
 
@@ -1805,37 +1863,6 @@ from the given string."
         (setq buffer-read-only t))))
     (wlf:set-buffer wm 'summary buf))
   (ewm:dp-array-hilite-focus))
-
-(defface ewm:face-title 
-  '((((type tty pc) (class color) (background light))
-     :foreground "green" :weight bold)
-    (((type tty pc) (class color) (background dark))
-     :foreground "yellow" :weight bold)
-    (t :height 1.5 :weight bold :inherit variable-pitch))
-  "Face for ewm titles at level 1."
-  :group 'ewm)
-
-(defface ewm:face-subtitle
-  '((((type tty pc) (class color)) :foreground "lightblue" :weight bold)
-    (t :height 1.2 :inherit variable-pitch))
-  "Face for ewm titles at level 2."
-  :group 'ewm)
-
-(defface ewm:face-item
-  '((t :inherit variable-pitch :foreground "DarkSlateBlue"))
-  "Face for ewm items."
-  :group 'ewm)
-
-(defun ewm:rt (text face)
-  (put-text-property 0 (length text) 'face face text) text)
-
-(defun ewm:rt-format (text &rest args)
-  (apply 'format (ewm:rt text 'ewm:face-item)
-         (loop for i in args
-               if (consp i)
-               collect (ewm:rt (car i) (cdr i))
-               else
-               collect (ewm:rt i 'ewm:face-subtitle))))
 
 (defun ewm:dp-array-insert-summary-info (selected-buf)
   (cond
