@@ -966,14 +966,14 @@ from the given string."
           (run-with-idle-timer 
            idle-update-delay t 
            'ewm:def-plugin-imenu-update-which-func))
-    (message "Imenu timer started.")))
+    (ewm:message "Imenu timer started.")))
 
 (defun ewm:def-plugin-imenu-stop-timer ()
   (interactive)
   (when (timerp ewm:def-plugin-imenu-timer)
     (cancel-timer ewm:def-plugin-imenu-timer))
   (setq ewm:def-plugin-imenu-timer nil)
-  (message "Imenu timer stopped."))
+  (ewm:message "Imenu timer stopped."))
 
 (defun ewm:def-plugin-imenu-update-which-func ()
   (ewm:with-advice
@@ -995,7 +995,6 @@ from the given string."
                (when ps
                  (goto-char ps)
                  (beginning-of-line)
-                 ;;(recenter)
                  (hl-line-highlight)))))))
       (t
        ;;can not update
