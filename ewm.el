@@ -79,17 +79,12 @@
 ;; ○タスク
 ;; elscreen対応　→　スクリーン変更でminor-mode停止, frame-parameterのチェック ?
 ;; 　→ とりあえずelscreenのみ対応してみる
-;; toggle-main-maxがちゃんと動いてない
-;; 　→ トグル前の状態を保存するようにする
 ;; Imenuのwhich-funcの階層メニュー対応
 ;; 　→ 現在地文字列→Imenuバッファの位置？
 ;; グローバル変数を整理してフレームに持って行くべきものを持って行く
 ;; 新プラグイン
 ;; 　project-files, repository-status, shell-pop, interactive-shell(irb,bc,ielmなど)
 ;; setq -> defvar に戻す
-;; パフォーマンスチューニング
-;; 　キャッシュで無駄なコピーをやめる
-;; 　  current-window-configurationとか
 
 ;;; Code:
 
@@ -1334,14 +1329,9 @@ from the given string."
   (wlf:select (ewm:pst-get-wm) 'sub))
 (defun ewm:dp-code-main-maximize-toggle-command ()
   (interactive)
-  (let ((wm (ewm:pst-get-wm)))
-    (cond
-     ((one-window-p)
-      (wlf:show wm 'files 'history 'sub 'main))
-     (t
-      (wlf:hide wm 'files 'history 'sub 'imenu)
-      (wlf:show wm 'main))))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'main)
   (ewm:pst-update-windows))
+
 (defun ewm:dp-code-toggle-clock-command ()
   (interactive)
   (let* ((wm (ewm:pst-get-wm))
@@ -1482,13 +1472,7 @@ from the given string."
   (ewm:pst-update-windows))
 (defun ewm:dp-doc-main-maximize-toggle-command ()
   (interactive)
-  (let ((wm (ewm:pst-get-wm)))
-    (cond
-     ((one-window-p)
-      (wlf:show wm 'left 'right 'sub))
-     (t
-      (wlf:hide wm 'right 'sub)
-      (wlf:show wm 'left))))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
   (ewm:pst-update-windows))
 
 (setq ewm:dp-doc-minor-mode-map 
@@ -1635,13 +1619,7 @@ from the given string."
 
 (defun ewm:dp-two-main-maximize-toggle-command ()
   (interactive)
-  (let ((wm (ewm:pst-get-wm)))
-    (cond
-     ((one-window-p)
-      (wlf:show wm 'left 'right 'sub 'history))
-     (t
-      (wlf:hide wm 'right 'sub 'history)
-      (wlf:show wm 'left))))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
   (ewm:pst-update-windows))
 
 (setq ewm:dp-two-minor-mode-map 
@@ -1705,7 +1683,8 @@ from the given string."
                   'w-1-1)
                  ((< rows 1)
                   (loop-cols 1 1))
-                  (loop-rows cols rows))))
+                 (t
+                  (loop-rows cols rows)))))
         (list '- (list ':upper-size-ratio sz-array) ar 'summary)))))
 
 (defun ewm:dp-array-make-winfo (cols rows)
@@ -1913,7 +1892,11 @@ from the given string."
   (ewm:dp-array-update-summary))
 (defun ewm:dp-array-move-down-command ()
   (interactive)
-  (windmove-down)
+  (let ((cwin (selected-window))
+        (bwin (wlf:get-window (ewm:pst-get-wm) 'summary)))
+    (windmove-down)
+    (when (eql (selected-window) bwin)
+      (select-window cwin)))
   (ewm:dp-array-update-summary))
 (defun ewm:dp-array-goto-prev-pst-command ()
   (interactive)
