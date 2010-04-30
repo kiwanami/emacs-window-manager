@@ -1241,9 +1241,7 @@ from the given string."
         (:name history :plugin history-list)
         (:name sub :buffer "*info*" :default-hide t)
         (:name imenu :plugin imenu :default-hide nil))
-
-      ewm:c-code-sub-buffer-regex "\\*\\(Help\\|Completions\\)\\*"
-      ewm:c-code-sub-popup-regex "\\*\\(info\\|anything\\)\\*")
+      )
 
 (ewm:pst-register 'code 'ewm:dp-code-setup)
 
@@ -1288,9 +1286,6 @@ from the given string."
   (ewm:message "#DP CODE popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((string-match ewm:c-code-sub-popup-regex buf-name)
-      (ewm:dp-code-popup-sub buf)
-      t)
      ((ewm:history-recordable-p buf)
       (ewm:pst-update-windows)
       ;;記録対象なら履歴に残るのでupdateで表示を更新させる
@@ -1303,7 +1298,7 @@ from the given string."
   (let ((wm (ewm:pst-get-wm)))
     (ewm:with-advice
      (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf))))
+     (wlf:set-buffer wm 'sub buf t))))
 
 (defun ewm:dp-code-leave (wm)
   )
@@ -1374,16 +1369,15 @@ from the given string."
 (setq ewm:c-doc-recipe
       '(- (:upper-size-ratio 0.75)
         (| left right)
-        (| sub scratch))
+        sub)
 
       ewm:c-doc-winfo
       '((:name left)
         (:name right)
-        (:name sub :buffer "*Help*" :default-hide t)
-        (:name scratch :buffer "*scratch*" :default-hide t))
+        (:name sub :default-hide t))
 
-      ewm:c-doc-sub-buffer-regex "\\*\\(Help\\|Completions\\)\\*"
-      ewm:c-doc-sub-info-regex "\\*info\\*")
+      ewm:c-doc-show-main-regex "\\*\\(Help\\|info\\)\\*"
+      )
 
 (ewm:pst-register 'doc 'ewm:dp-doc-setup)
 
@@ -1404,8 +1398,10 @@ from the given string."
          :popup  'ewm:dp-doc-popup
          :leave  'ewm:dp-doc-leave
          :keymap ewm:dp-doc-minor-mode-map)))
-    (ewm:dp-doc-set-main-buffer 
-     (or prev-selected-buffer (get-buffer "*info*")) doc-wm)
+    (wlf:set-buffer 
+     doc-wm 'left 
+     (or prev-selected-buffer
+         (ewm:history-get-main-buffer)))
     pst))
 
 (defun ewm:dp-doc-start ()
@@ -1441,11 +1437,11 @@ from the given string."
       nil)))
 
 (defun ewm:dp-doc-popup (buf)
-  ;;記録バッファとInfo以外はsubで表示してみる
+  ;;記録バッファとInfo,help以外はsubで表示
   (ewm:message "#DP DOC popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((or (string-match ewm:c-doc-sub-info-regex buf-name)
+     ((or (string-match ewm:c-doc-show-main-regex buf-name)
           (ewm:history-recordable-p buf))
       (ewm:dp-doc-set-main-buffer buf)
       t)
@@ -1462,8 +1458,7 @@ from the given string."
 (defun ewm:dp-doc-leave (wm)
   (loop for b in (buffer-list)
         do (with-current-buffer b
-             (follow-mode -1))) ; 余計な世話かもしれない...
-  )
+             (follow-mode -1))))
 
 ;; Commands / Keybindings
 
@@ -1477,20 +1472,9 @@ from the given string."
 (defun ewm:dp-doc-navi-sub-command ()
   (interactive)
   (wlf:select (ewm:pst-get-wm) 'sub))
-(defun ewm:dp-doc-navi-scratch-command ()
-  (interactive)
-  (wlf:select (ewm:pst-get-wm) 'scratch))
 (defun ewm:dp-doc-column-toggle-command ()
   (interactive)
   (wlf:toggle (ewm:pst-get-wm) 'right)
-  (ewm:pst-update-windows))
-(defun ewm:dp-doc-bottom-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'sub 'scratch)
-  (ewm:pst-update-windows))
-(defun ewm:dp-doc-scratch-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'scratch)
   (ewm:pst-update-windows))
 (defun ewm:dp-doc-sub-toggle-command ()
   (interactive)
@@ -1501,21 +1485,19 @@ from the given string."
   (let ((wm (ewm:pst-get-wm)))
     (cond
      ((one-window-p)
-      (wlf:show wm 'left 'right 'sub 'scratch))
+      (wlf:show wm 'left 'right 'sub))
      (t
-      (wlf:hide wm 'right 'sub 'scratch)
+      (wlf:hide wm 'right 'sub)
       (wlf:show wm 'left))))
   (ewm:pst-update-windows))
 
 (setq ewm:dp-doc-minor-mode-map 
       (ewm:define-keymap
        '(("C-c m" . ewm:dp-doc-navi-main-command)
-         ("C-c c" . ewm:dp-doc-navi-scratch-command)
          ("C-c s" . ewm:dp-doc-navi-sub-command)
          ("C-c R" . ewm:dp-doc-column-toggle-command)
          ("C-c B" . ewm:dp-doc-bottom-toggle-command)
          ("C-c S" . ewm:dp-doc-sub-toggle-command)
-         ("C-c C" . ewm:dp-doc-scratch-toggle-command)
          ("C-c M" . ewm:dp-doc-main-maximize-toggle-command)
          ("C-c I" . info))))
 
@@ -1533,7 +1515,7 @@ from the given string."
         (:name sub :buffer "*Help*" :default-hide t)
         (:name history :plugin history-list :default-hide t))
 
-      ewm:c-two-sub-buffer-regex "\\*\\(Help\\|Completions\\)\\*"
+      ewm:c-two-show-side-regex "\\*\\(Help\\|info\\)\\*"
       )
 
 (ewm:pst-register 'two 'ewm:dp-two-setup)
@@ -1592,6 +1574,9 @@ from the given string."
   (ewm:message "#DP TWO popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
+     ((string-match ewm:c-two-show-side-regex buf-name)
+      (wlf:set-buffer (ewm:pst-get-wm) 'right buf)
+      t)
      ((ewm:history-recordable-p buf)
       (ewm:pst-update-windows)
       t)
@@ -1686,37 +1671,42 @@ from the given string."
   (let* ((sz-summary 0.12)
          (sz-array (- 1.0 sz-summary)))
     (decf cols) (decf rows)
-  (labels
-      ((loop-rows (cols rows)
-                  (loop for i from rows downto 1
-                        with ret = nil
-                        if (< i rows)
-                        do (setq ret 
-                                 (list 
-                                  '- (list :upper-size-ratio 
-                                           (* sz-array (/ 1.0 (- rows (- i 1.5)))))
-                                  (loop-cols cols i) ret))
-                        else
-                        do (setq ret 
-                                 (list '- (loop-cols cols i)
-                                       (loop-cols cols (1+ i))))
-                        finally return ret))
-       (loop-cols (cols y)
-                  (loop for i from cols downto 1
-                        with ret = nil
-                        if (< i cols)
-                        do (setq ret (list 
-                                      '| (list :left-size-ratio
-                                               (/ 1.0 (- cols (- i 2))))
-                                      (mk i y) ret))
-                        else
-                        do (setq ret (list '| (mk i y) (mk (1+ i) y)))
-                        finally return ret))
-       (mk (x y) (intern (format "w-%i-%i" x y))))
-    (let ((ar (if (< rows 1)
-                  (loop-cols 1 1)
-                (loop-rows cols rows))))
-      (list '- (list ':upper-size-ratio sz-array) ar 'summary)))))
+    (labels
+        ((loop-rows
+          (cols rows)
+          (loop for i from rows downto 1
+                with ret = nil
+                if (< i rows)
+                do (setq ret 
+                         (list 
+                          '- (list :upper-size-ratio 
+                                   (* sz-array (/ 1.0 (- rows (- i 1.5)))))
+                          (loop-cols cols i) ret))
+                else
+                do (setq ret 
+                         (list '- (loop-cols cols i)
+                               (loop-cols cols (1+ i))))
+                finally return ret))
+         (loop-cols
+          (cols y)
+          (loop for i from cols downto 1
+                with ret = nil
+                if (< i cols)
+                do (setq ret (list 
+                              '| (list :left-size-ratio
+                                       (/ 1.0 (- cols (- i 2))))
+                              (mk i y) ret))
+                else
+                do (setq ret (list '| (mk i y) (mk (1+ i) y)))
+                finally return ret))
+         (mk (x y) (intern (format "w-%i-%i" x y))))
+      (let ((ar (cond
+                 ((and (eql cols 0) (eql rows 0))
+                  'w-1-1)
+                 ((< rows 1)
+                  (loop-cols 1 1))
+                  (loop-rows cols rows))))
+        (list '- (list ':upper-size-ratio sz-array) ar 'summary)))))
 
 (defun ewm:dp-array-make-winfo (cols rows)
   ;; cols x rows の winfo を作る
@@ -1749,7 +1739,8 @@ from the given string."
                         if (<= num (* i y))
                         return (cons i y)
                         finally return nil)))
-    (loop-rows ewm:c-array-max-cols ewm:c-array-max-rows)))
+    (loop-rows ewm:c-array-max-cols 
+               ewm:c-array-max-rows)))
 
 (defun ewm:dp-array-make-wm (buffers)
   (let* ((size (ewm:dp-array-calculate-size (length buffers)))
