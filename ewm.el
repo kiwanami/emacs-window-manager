@@ -78,9 +78,15 @@
 
 ;; ○タスク
 ;; elscreen対応　→　スクリーン変更でminor-mode停止, frame-parameterのチェック ?
-;; edebugが使えない
+;; 　→ とりあえずelscreenのみ対応してみる
+;; toggle-main-maxがちゃんと動いてない
+;; 　→ トグル前の状態を保存するようにする
 ;; Imenuのwhich-funcの階層メニュー対応
+;; 　→ 現在地文字列→Imenuバッファの位置？
 ;; グローバル変数を整理してフレームに持って行くべきものを持って行く
+;; 新プラグイン
+;; 　project-files, repository-status, shell-pop, interactive-shell(irb,bc,ielmなど)
+;; setq -> defvar に戻す
 ;; パフォーマンスチューニング
 ;; 　キャッシュで無駄なコピーをやめる
 ;; 　  current-window-configurationとか
@@ -218,7 +224,7 @@ from the given string."
 
 (defun ewm:history-add (buffer)
   ;; 死んでるバッファのクリア
-  ;; undoキューのクリア
+  ;; undoキューのクリア（実際にはクリアせずにLRUの方が便利かも）
   ;; 履歴に追加、後ろを削除
   ;; フレームパラメーターに保存
   (ewm:aif (get-buffer buffer)
@@ -374,26 +380,12 @@ from the given string."
 (defun ewm:override-window-cfg-change ()
   ;; window-configuration-change-hook関数
   (when (ewm:managed-p)
-    ;; (ewm:message "#CFG-CHANGE  / MINI %s / COMP %s"
-    ;;              (minibuffer-depth) 
-    ;;              (and ewm:override-window-cfg-backup 
-    ;;                   (not (compare-window-configurations 
-    ;;                         ewm:override-window-cfg-backup 
-    ;;                         (current-window-configuration)))))
-    (when (and (= (minibuffer-depth) 0)
-               (and ewm:override-window-cfg-backup 
-                    (not (compare-window-configurations 
+    (when (and (= (minibuffer-depth) 0) ; ミニバッファ実行中でなくて
+               (and ewm:override-window-cfg-backup ; 補完前のウインドウ配置が空でなくて
+                    (not (compare-window-configurations ; 配置が違ってたら
                           ewm:override-window-cfg-backup 
                           (current-window-configuration)))))
-      (ewm:override-restore-window-cfg))
-    ;; (ewm:message " # WINDOWS CHECK : %s" 
-    ;;              (loop for winfo in (wlf:wset-winfo-list (ewm:pst-get-wm))
-    ;;                    for win = (wlf:window-window winfo)
-    ;;                    for shown = (wlf:window-shown winfo)
-    ;;                    for livep = (window-live-p win)
-    ;;                    if (and (eq shown 'show) (not livep))
-    ;;                    collect win))
-    ))
+      (ewm:override-restore-window-cfg)))) ; 配置を戻す
 
 (defun ewm:override-setup-completion ()
   ;;completionバッファが終了したとき、set-window-configurationが呼ばれずに
@@ -401,6 +393,8 @@ from the given string."
   ;;windwo-configuration-change-hookを捕まえて自前で
   ;;window配置を直すようにする。
   (when (ewm:managed-p)
+    (ewm:message "#OVERRIDE-SETUP-COMPLETION")
+    (ewm:debug-windows (ewm:pst-get-wm))
     (setq ewm:override-window-cfg-backup 
           (current-window-configuration))))
 
