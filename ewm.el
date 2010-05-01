@@ -121,7 +121,7 @@
      keymap-list)
     map))
 
-(defvar ewm:debug t "Debug output switch.") ; debug
+(defvar ewm:debug nil "Debug output switch.") ; debug
 (defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
 
 (defmacro ewm:message (&rest args)
