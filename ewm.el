@@ -1320,7 +1320,9 @@ from the given string."
   (let ((wm (ewm:pst-get-wm)))
     (ewm:with-advice
      (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf t))))
+     (wlf:set-buffer 
+      wm 'sub buf 
+      (= 0 (minibuffer-depth))))))
 
 (defun ewm:dp-code-leave (wm)
   )
