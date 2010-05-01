@@ -219,15 +219,25 @@ from the given string."
 
 (defun ewm:history-add (buffer)
   ;; 死んでるバッファのクリア
-  ;; undoキューのクリア（実際にはクリアせずにLRUの方が便利かも）
+  ;; undoキューのクリア（LRU）
   ;; 履歴に追加、後ろを削除
   ;; フレームパラメーターに保存
+  (ewm:message "#HISTORY-ADD : %s" buffer)
   (ewm:aif (get-buffer buffer)
-      (let ((history 
-             (loop for h in (ewm:history-get)
-                   for b = (get-buffer h)
-                   if (and b (buffer-live-p b))
-                   collect b)))
+      (let ((history
+             (mapcar 
+              'car
+              (sort 
+               (loop for h in (nconc 
+                               (ewm:history-get)
+                               (ewm:history-get-backup))
+                     for b = (get-buffer h)
+                     if (and b (buffer-live-p b))
+                     collect (cons b (float-time 
+                                      (buffer-local-value 
+                                       'buffer-display-time b))))
+               (lambda (i j) 
+                 (> (cdr i) (cdr j)))))))
         (when (ewm:history-recordable-p it)
           (ewm:history-save-backup nil)
           (setq history
@@ -275,17 +285,14 @@ from the given string."
   (ewm:aif (ewm:history-get)
       (car it) ewm:c-blank-buffer))
 
-(setq ewm:force-stop nil)
-
 (defun ewm:managed-p ()
   ;;このフレームがWMで管理対象かどうか
-  (and (not ewm:force-stop)
-       (ewm:pst-get-instance)))
+  (ewm:pst-get-instance))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Advices / Overriding Functions
 
-(setq ewm:ad-now-overriding nil) ; 乗っ取り中なら t → 元の関数を実行
+(defvar ewm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
 
 (defmacro ewm:with-advice (&rest body)
   ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
