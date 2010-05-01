@@ -79,12 +79,8 @@
 ;; ○タスク
 ;; elscreen対応　→　スクリーン変更でminor-mode停止, frame-parameterのチェック ?
 ;; 　→ とりあえずelscreenのみ対応してみる
-;; Imenuのwhich-funcの階層メニュー対応
-;; 　→ 現在地文字列→Imenuバッファの位置？
-;; グローバル変数を整理してフレームに持って行くべきものを持って行く
 ;; 新プラグイン
 ;; 　project-files, repository-status, shell-pop, interactive-shell(irb,bc,ielmなど)
-;; setq -> defvar に戻す
 
 ;;; Code:
 
@@ -93,18 +89,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Customize
 
-(setq ewm:c-max-history-num 20   ; 履歴の保存数
-      ewm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
+(defvar ewm:c-max-history-num 20 "Number of buffer history.")   ; 履歴の保存数
+(defvar ewm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
       (lambda (buf)
-        (buffer-local-value 'buffer-file-name buf)) ; ファイル名に関連ついてるもの
-      ewm:c-blank-buffer         ; 白紙バッファ
+        (buffer-local-value 'buffer-file-name buf))) ; ファイル名に関連ついてるもの
+(defvar ewm:c-blank-buffer         ; 白紙バッファ
       (let ((buf (get-buffer-create " *ewm:blank*")))
         (with-current-buffer buf
           (setq buffer-read-only nil)
           (buffer-disable-undo buf)
           (erase-buffer)
           (setq buffer-read-only t)) buf)
-      )
+      "Blank buffer.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Macro / Utilities
@@ -125,7 +121,8 @@
      keymap-list)
     map))
 
-(setq ewm:debug nil ewm:debug-count 0) ; debug
+(defvar ewm:debug t "Debug output switch.") ; debug
+(defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
 
 (defmacro ewm:message (&rest args)
   (when ewm:debug
@@ -412,7 +409,7 @@ from the given string."
       (ewm:aif (ewm:$pst-main i)
         (wlf:select (ewm:$pst-wm i) it)))))
 
-(setq ewm:override-window-cfg-count 0)
+(defvar ewm:override-window-cfg-count 0 "[internal] Window configuration counter")
 
 (defadvice current-window-configuration (around ewm:ad-override)
   (let ((cfg ad-do-it))
@@ -441,8 +438,7 @@ from the given string."
   ad-do-it
   (when (and ad-return-value (ewm:managed-p))
     (ewm:message "#COMPARE-WINDOW-CONFIGURATIONS = %s" ad-return-value)
-    (ewm:debug-windows (ewm:pst-get-wm)))
-  )
+    (ewm:debug-windows (ewm:pst-get-wm))))
 
 (defadvice set-window-configuration (around ewm:ad-override-long (cfg))
   (ewm:message "#SET-WINDOW-CONFIGURATION -->")
@@ -477,6 +473,7 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Framework
 
+(defvar ewm:pst-alist nil "[internal] Perspective registory.")
 (setq ewm:pst-alist nil)
 
 ;; perspective setup function は、ewm:pst構造体を返す。
@@ -672,7 +669,7 @@ from the given string."
 
 ;;全パースペクティブに共通なキーマップ定義
 ;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (ewm:pst-change)
-(setq ewm:pst-minor-mode-keymap
+(defvar ewm:pst-minor-mode-keymap
       (ewm:define-keymap
        '(("C-c C-q"   . ewm:stop-management)
          ("C-c C-l"   . ewm:pst-update-windows-command)
@@ -714,6 +711,7 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Framework
 
+(defvar ewm:plugin-alist nil "[internal] Plugin registory.")
 (setq ewm:plugin-alist nil)
 
 (defun ewm:plugin-register (name update-function)
@@ -786,7 +784,7 @@ from the given string."
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
 
-(setq ewm:def-plugin-history-list-mode-map 
+(defvar ewm:def-plugin-history-list-mode-map 
   (ewm:define-keymap 
    '(("k"    . ewm:def-plugin-history-list-forward-command)
      ("j"    . ewm:def-plugin-history-list-back-command)
@@ -929,15 +927,15 @@ from the given string."
     (ewm:def-plugin-imenu-jump elm)
     (select-window cwin)))
 
-(define-derived-mode ewm:def-plugin-imenu-mode fundamental-mode "Imenu")
-
-(setq ewm:def-plugin-imenu-mode-map 
+(defvar ewm:def-plugin-imenu-mode-map 
   (ewm:define-keymap 
    '(("C-m" . ewm:def-plugin-imenu-jump-command)
      ("j" . next-line)
      ("k" . previous-line)
      ("<SPC>" . ewm:def-plugin-imenu-show-command)
      )))
+
+(define-derived-mode ewm:def-plugin-imenu-mode fundamental-mode "Imenu")
 
 (defun ewm:def-plugin-imenu-which-func ()
   ;; which-func-modes から拝借
@@ -1241,16 +1239,16 @@ from the given string."
 ;;; code / Code editing perspective
 ;;;--------------------------------------------------
 
-(setq ewm:c-code-recipe
+(defvar ewm:c-code-recipe
       '(| (:left-max-size 40)
         (- (:upper-size-ratio 0.7)
            files history)
         (- (:upper-size-ratio 0.7)
            (| (:right-max-size 30)
               main imenu)
-           sub))
+           sub)))
 
-      ewm:c-code-winfo
+(defvar ewm:c-code-winfo
       '((:name main)
         (:name files :plugin dir-files)
         (:name history :plugin history-list)
@@ -1370,7 +1368,7 @@ from the given string."
     (ewm:pst-window-plugin-set wm 'history next)
     (ewm:pst-update-windows)))
 
-(setq ewm:dp-code-minor-mode-map 
+(defvar ewm:dp-code-minor-mode-map 
       (ewm:define-keymap
        '(("C-c m" . ewm:dp-code-navi-main-command)
          ("C-c f" . ewm:dp-code-navi-files-command)
@@ -1385,18 +1383,17 @@ from the given string."
 ;;; document / Document view perspective
 ;;;--------------------------------------------------
 
-(setq ewm:c-doc-recipe
+(defvar ewm:c-doc-recipe
       '(- (:upper-size-ratio 0.75)
         (| left right)
-        sub)
+        sub))
 
-      ewm:c-doc-winfo
+(defvar ewm:c-doc-winfo
       '((:name left)
         (:name right)
-        (:name sub :default-hide t))
+        (:name sub :default-hide t)))
 
-      ewm:c-doc-show-main-regex "\\*\\(Help\\|info\\)\\*"
-      )
+(defvar ewm:c-doc-show-main-regexp "\\*\\(Help\\|info\\)\\*")
 
 (ewm:pst-register 'doc 'ewm:dp-doc-setup)
 
@@ -1460,7 +1457,7 @@ from the given string."
   (ewm:message "#DP DOC popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((or (string-match ewm:c-doc-show-main-regex buf-name)
+     ((or (string-match ewm:c-doc-show-main-regexp buf-name)
           (ewm:history-recordable-p buf))
       (ewm:dp-doc-set-main-buffer buf)
       t)
@@ -1504,7 +1501,7 @@ from the given string."
   (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
   (ewm:pst-update-windows))
 
-(setq ewm:dp-doc-minor-mode-map 
+(defvar ewm:dp-doc-minor-mode-map 
       (ewm:define-keymap
        '(("C-c m" . ewm:dp-doc-navi-main-command)
          ("C-c s" . ewm:dp-doc-navi-sub-command)
@@ -1517,19 +1514,20 @@ from the given string."
 ;;; two / Two column editing perspective
 ;;;--------------------------------------------------
 
-(setq ewm:c-two-recipe
+(defvar ewm:c-two-recipe
       '(- (:upper-size-ratio 0.8)
-        (| left right)
-        (| history sub))
+          (| left
+             (- (:upper-size-ratio 0.9)
+                right history))
+          sub))
 
-      ewm:c-two-winfo
+(defvar ewm:c-two-winfo
       '((:name left )
         (:name right :plugin main-prev)
         (:name sub :buffer "*Help*" :default-hide t)
-        (:name history :plugin history-list :default-hide t))
+        (:name history :plugin history-list :default-hide nil)))
 
-      ewm:c-two-show-side-regex "\\*\\(Help\\|info\\)\\*"
-      )
+(defvar ewm:c-two-show-side-regexp "\\*\\(Help\\|info\\)\\*")
 
 (ewm:pst-register 'two 'ewm:dp-two-setup)
 
@@ -1588,7 +1586,7 @@ from the given string."
   (ewm:message "#DP TWO popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((string-match ewm:c-two-show-side-regex buf-name)
+     ((string-match ewm:c-two-show-side-regexp buf-name)
       (wlf:set-buffer (ewm:pst-get-wm) 'right buf)
       t)
      ((ewm:history-recordable-p buf)
@@ -1652,7 +1650,7 @@ from the given string."
   (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
   (ewm:pst-update-windows))
 
-(setq ewm:dp-two-minor-mode-map 
+(defvar ewm:dp-two-minor-mode-map 
       (ewm:define-keymap
        '(("C-c m" . ewm:dp-two-navi-left-command)
          ("C-c h" . ewm:dp-two-navi-history-command)
@@ -1667,10 +1665,9 @@ from the given string."
 ;;; array / arrange buffers perspective
 ;;;--------------------------------------------------
 
-(setq ewm:c-array-font-decrease 3 ; フォントのを小さくする相対サイズ
-      ewm:c-array-max-rows 4  ; 並べる横最大数
-      ewm:c-array-max-cols 5  ; 並べる縦最大数
-      )
+(defvar ewm:c-array-font-decrease 3) ; フォントのを小さくする相対サイズ
+(defvar ewm:c-array-max-rows 4)  ; 並べる横最大数
+(defvar ewm:c-array-max-cols 5)  ; 並べる縦最大数
 
 (ewm:pst-register 'array 'ewm:dp-array-setup)
 
@@ -1787,7 +1784,7 @@ from the given string."
         (incf cnt))
   wm)
 
-(setq ewm:dp-array-buffers-function 'ewm:dp-array-get-recordable-buffers)
+(defvar ewm:dp-array-buffers-function 'ewm:dp-array-get-recordable-buffers)
 
 (defun ewm:dp-array-get-recordable-buffers ()
   ;;履歴に記録しそうなもの一覧
@@ -1893,7 +1890,7 @@ from the given string."
              (format "%s" (buffer-local-value
                            'major-mode selected-buf)))))))
 
-(setq ewm:dp-array-overlay-focus nil)
+(defvar ewm:dp-array-overlay-focus nil "[internal]")
 
 (defun ewm:dp-array-hilite-focus ()
   (when ewm:dp-array-overlay-focus
@@ -1946,7 +1943,7 @@ from the given string."
   (wlf:select (ewm:pst-get-wm) 'w-1-1)
   (ewm:pst-change-prev))
 
-(setq ewm:dp-array-minor-mode-map 
+(defvar ewm:dp-array-minor-mode-map 
       (ewm:define-keymap
        '(("<SPC>"  . ewm:dp-array-toggle-more-buffers-command)
          ;;cursor
@@ -1982,7 +1979,7 @@ from the given string."
 (define-key ewm:pst-minor-mode-keymap (kbd "C-c 3") 'ewm:dp-doc)
 (define-key ewm:pst-minor-mode-keymap (kbd "C-c 4") 'ewm:dp-array)
 
-(setq ewm:save-window-configuration nil) ; backup
+(defvar ewm:save-window-configuration nil) ; backup
 
 (defun ewm:history-add-loaded-buffers ()
   (interactive)
