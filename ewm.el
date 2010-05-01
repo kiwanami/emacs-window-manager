@@ -1569,8 +1569,9 @@ from the given string."
             (eql curwin (wlf:get-window wm 'right)))
         ;;メイン画面の場合
         (cond 
-         ((equal (get-buffer buf) (ewm:history-get-main-buffer))
+         ((eql (get-buffer buf) (wlf:get-buffer wm 'left))
           ;;メインと同じなら並べる
+          (ewm:pst-update-windows)
           (wlf:set-buffer wm 'right buf)
           t)
          ((ewm:history-recordable-p buf)
