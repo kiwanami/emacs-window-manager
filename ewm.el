@@ -834,7 +834,8 @@ from the given string."
 ;;;--------------------------------------------------
 
 ;; メインとプラグインの相互作用的なデモ
-;; anything-config.el を参考に実装
+;; anything-config.el の imenu を参考に実装
+;; （文字列で比較しているのがちょっとダサイ）
 
 (require 'imenu)
 (defvar ewm:def-plugin-imenu-delimiter " / ")
@@ -957,14 +958,18 @@ from the given string."
                    (if (>= (setq offset (- (point) mark)) 0)
                        (if (< offset minoffset)
                            (setq minoffset offset
-                                 name (apply 'concat (reverse (cons (car pair)
-                                                                    namestack)))))))))
+                                 name (mapconcat 
+                                       'identity
+                                       (reverse (cons 
+                                                 (car pair)
+                                                 namestack)) 
+                                       ewm:def-plugin-imenu-delimiter)))))))
         (setq alist     (car imstack)
               namestack (cdr namestack)
               imstack   (cdr imstack))))
     name))
 
-(setq ewm:def-plugin-imenu-timer nil)
+(defvar ewm:def-plugin-imenu-timer nil)
 
 (defun ewm:def-plugin-imenu-start-timer ()
   (interactive)
@@ -988,14 +993,12 @@ from the given string."
           (win (selected-window))
           (imenu-buf (get-buffer " *WM:Imenu*"))
           (imenu-win (and imenu-buf (get-buffer-window imenu-buf))))
-     (ewm:message "which-func-buf : %s" main-buf)
      (cond
       ((null imenu-buf)
        (ewm:def-plugin-imenu-stop-timer))
       ((eql win (get-buffer-window main-buf))
        (let ((name (ewm:def-plugin-imenu-which-func)))
          (when (and name (window-live-p imenu-win))
-           (ewm:message "which-func-name : %s" name)
            (with-selected-window imenu-win
              (goto-char (point-min))
              (let ((ps (re-search-forward (concat "^" name "$"))))
