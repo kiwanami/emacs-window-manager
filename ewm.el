@@ -1168,14 +1168,14 @@ from the given string."
               (cond 
                ((string-match "exited abnormally" event)
                 (kill-buffer tmpbuf)
-                (ewm:def-plugin-clock-show-text))
+                (ewm:def-plugin-clock-show-text "No network connection."))
                ((equal event "finished\n")
                 (kill-buffer tmpbuf)
                 (let ((f ewm:def-plugin-clock-download-file))
                   (if (and (file-exists-p f)
                            (< 0 (nth 7 (file-attributes f))))
                       (ewm:def-plugin-clock-resize)
-                    (ewm:def-plugin-clock-show-text))))))))))
+                    (ewm:def-plugin-clock-show-text "No network connection."))))))))))
 
 (defun ewm:def-plugin-clock-resize ()
   (lexical-let* 
@@ -1191,9 +1191,17 @@ from the given string."
                        (concat "jpeg:" ewm:def-plugin-clock-resized-file))))
     (set-process-sentinel
      proc (lambda (proc event)
-            (when (equal event "finished\n")
-              (kill-buffer tmpbuf)
-              (ewm:def-plugin-clock-show-image)
+            (cond
+               ((string-match "exited abnormally" event)
+                (kill-buffer tmpbuf)
+                (ewm:def-plugin-clock-show-text "Could not convert."))
+               ((equal event "finished\n")
+                (kill-buffer tmpbuf)
+                (let ((f ewm:def-plugin-clock-resized-file))
+                  (if (and (file-exists-p f)
+                           (< 0 (nth 7 (file-attributes f))))
+                      (ewm:def-plugin-clock-show-image)
+                    (ewm:def-plugin-clock-show-text "Could not convert."))))
               )))))
 
 (defun ewm:def-plugin-clock-show-image ()
@@ -1205,15 +1213,18 @@ from the given string."
       (goto-char (point-min))
       (insert-image img))))
 
-(defun ewm:def-plugin-clock-show-text ()
+(defun ewm:def-plugin-clock-show-text (&optional text)
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
         (time (current-time)))
     (with-current-buffer buf
       (erase-buffer)
       (goto-char (point-min))
+      (when text
+        (insert 
+         (ewm:rt-format "Status: %s\n" text)))
       (insert 
        (ewm:rt-format
-        "System: %s\nLoad Average: %s\n\n"
+        "\nSystem: %s\nLoad Average: %s\n\n"
         (system-name) (apply 'format "%.2f, %.2f, %.2f" (load-average t))))
       (insert 
        (ewm:rt-format
