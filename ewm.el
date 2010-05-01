@@ -595,7 +595,7 @@ from the given string."
         (ewm:pst-set-instance next-pst-instance)
         (ewm:pst-change-keymap (ewm:$pst-keymap next-pst-instance))
         (ewm:aif (ewm:$pst-start next-pst-instance)
-          (funcall it))
+          (funcall it (ewm:$pst-wm next-pst-instance)))
         )))
     (ewm:pst-update-windows t)))
 
@@ -620,7 +620,7 @@ from the given string."
   (ewm:pst-set-instance pst-instance)
   (ewm:pst-change-keymap (ewm:$pst-keymap pst-instance))
   (ewm:aif (ewm:$pst-start pst-instance)
-      (funcall it)))
+      (funcall it (ewm:$pst-wm pst-instance))))
 
 (defun ewm:pst-finish ()
   (ewm:message "#PST-FINISH")
@@ -1270,7 +1270,7 @@ from the given string."
         (ewm:history-add prev-selected-buffer))
     pst))
 
-(defun ewm:dp-code-start ()
+(defun ewm:dp-code-start (wm)
   )
 
 (defun ewm:dp-code-update (wm)
@@ -1403,7 +1403,7 @@ from the given string."
          (ewm:history-get-main-buffer)))
     pst))
 
-(defun ewm:dp-doc-start ()
+(defun ewm:dp-doc-start (wm)
   )
 
 (defun ewm:dp-doc-update (wm)
@@ -1532,7 +1532,7 @@ from the given string."
          :keymap ewm:dp-two-minor-mode-map)))
     pst))
 
-(defun ewm:dp-two-start ()
+(defun ewm:dp-two-start (wm)
 )
 
 (defun ewm:dp-two-update (wm)
@@ -1750,7 +1750,8 @@ from the given string."
      :leave 'ewm:dp-array-leave
      :keymap ewm:dp-array-minor-mode-map)))
 
-(defun ewm:dp-array-start ()
+(defun ewm:dp-array-start (wm)
+  (ewm:message "#ARRAY START")
   (ewm:dp-array-decrease-fontsize)
   (ewm:dp-array-update-summary))
 
@@ -1795,6 +1796,7 @@ from the given string."
     (nreverse ret)))
 
 (defun ewm:dp-array-leave (wm)
+  (ewm:message "#ARRAY LEAVE")
   (when ewm:dp-array-overlay-focus
     (delete-overlay ewm:dp-array-overlay-focus))
   (ewm:dp-array-increase-fontsize))
