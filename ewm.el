@@ -1258,6 +1258,9 @@ from the given string."
         (:name imenu :plugin imenu :default-hide nil))
       )
 
+(defvar ewm:c-code-show-main-regexp
+   "\\*\\(vc-diff\\)\\*")
+
 (ewm:pst-register 'code 'ewm:dp-code-setup)
 
 (defun ewm:dp-code-setup ()
@@ -1304,6 +1307,10 @@ from the given string."
      ((ewm:history-recordable-p buf)
       (ewm:pst-update-windows)
       ;;記録対象なら履歴に残るのでupdateで表示を更新させる
+      t)
+     ((and ewm:c-code-show-main-regexp
+           (string-match ewm:c-code-show-main-regexp buf-name))
+      (wlf:set-buffer (ewm:pst-get-wm) 'main buf t)
       t)
      (t
       (ewm:dp-code-popup-sub buf)
