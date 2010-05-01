@@ -394,13 +394,13 @@ from the given string."
   ;;window配置が元に戻される。なので、completionから戻ったときには
   ;;windwo-configuration-change-hookを捕まえて自前で
   ;;window配置を直すようにする。
-  (when (ewm:managed-p)
+  (when (and (ewm:managed-p) (null ewm:override-window-cfg-backup))
     (ewm:message "#OVERRIDE-SETUP-COMPLETION")
     (ewm:debug-windows (ewm:pst-get-wm))
     (setq ewm:override-window-cfg-backup 
           (current-window-configuration))))
 
-(setq ewm:override-window-cfg-backup nil)
+(defvar ewm:override-window-cfg-backup nil "[internal] Backup window configuration.")
 
 (defun ewm:override-restore-window-cfg ()
   (interactive)
