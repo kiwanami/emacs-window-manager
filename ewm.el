@@ -644,14 +644,38 @@ from the given string."
   (plist-put (ewm:pst-window-option-get wm window-name)
              ':plugin plugin-name))
 
+(defun ewm:pst-buffer-set (window-name buffer &optional showp selectp)
+  ;;指定したウインドウにバッファをセットする
+  (let ((wm (ewm:pst-get-wm)))
+    (when (wlf:window-name-p wm window-name)
+      (when showp
+        (wlf:show wm window-name))
+      (wlf:set-buffer wm window-name buffer selectp))))
+
+(defun ewm:pst-window-select (window-name)
+  ;;指定したウインドウを選択する
+  (let ((wm (ewm:pst-get-wm)))
+    (when (wlf:window-name-p wm window-name)
+      (wlf:select wm window-name))))
+
+(defun ewm:pst-window-toggle (window-name &optional selectp next-window)
+  ;;指定したウインドウをトグルする
+  (let ((wm (ewm:pst-get-wm)))
+    (when (wlf:window-name-p wm window-name)
+      (wlf:toggle wm window-name)
+      (if (wlf:window-displayed-p wm window-name)
+          (and selectp (wlf:select wm window-name))
+        (and next-window (wlf:select wm next-window))))))
+
 ;;; Keybindings / Minor Mode
 ;;;--------------------------------------------------
 
 (defun ewm:pst-update-windows-command ()
   (interactive)
   (when (ewm:managed-p)
-    (wlf:reset-window-sizes (ewm:pst-get-wm))
-    (ewm:pst-update-windows)))
+    (ewm:with-advice
+     (wlf:reset-window-sizes (ewm:pst-get-wm))
+     (ewm:pst-update-windows))))
 (defun ewm:pst-change-prev-pst-command ()
   (interactive)
   (when (ewm:managed-p)
@@ -1413,11 +1437,14 @@ from the given string."
          :switch 'ewm:dp-doc-switch
          :popup  'ewm:dp-doc-popup
          :leave  'ewm:dp-doc-leave
-         :keymap ewm:dp-doc-minor-mode-map)))
-    (wlf:set-buffer 
-     doc-wm 'left 
-     (or prev-selected-buffer
-         (ewm:history-get-main-buffer)))
+         :keymap ewm:dp-doc-minor-mode-map))
+       (buf (or prev-selected-buffer
+                (ewm:history-get-main-buffer))))
+    
+    (wlf:set-buffer doc-wm 'left buf)
+    (with-current-buffer buf
+      (follow-mode 1))
+
     pst))
 
 (defun ewm:dp-doc-start (wm)
