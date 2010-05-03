@@ -36,7 +36,14 @@
 ;; 　・機能バッファも含めるかどうか
 ;; 　・バッファ選択したらパースペクティブを選択
 
-;; ○方針
+;; ○インストール
+;; 1) ewm.el, window-layout.el をロードパスに置く。
+;; 2) 以下を .emacs に書く
+;;    (require 'ewm)
+;; 3) M-x ewm:start-management で開始。
+;;    ※止めるには C-c C-q か、 M-x ewm:stop-management で終了。
+
+;; ○開発方針
 ;; とりあえずやりたいこと（Window管理、パースペクティブ、プラグイン）を
 ;; 実装してみて、整理・汎用化を後で考えてみる。
 
@@ -75,12 +82,7 @@
 ;;   doc   / ewm:dp-doc-
 ;;   two   / ewm:dp-two-
 ;;   array / ewm:dp-array-
-
-;; ○タスク
-;; elscreen対応　→　スクリーン変更でminor-mode停止, frame-parameterのチェック ?
-;; 　→ とりあえずelscreenのみ対応してみる
-;; 新プラグイン
-;; 　project-files, repository-status, shell-pop, interactive-shell(irb,bc,ielmなど)
+;; 全体制御
 
 ;;; Code:
 
