@@ -225,7 +225,7 @@ from the given string."
              (mapcar 
               'car
               (sort 
-               (loop for h in (nconc 
+               (loop for h in (append
                                (ewm:history-get)
                                (ewm:history-get-backup))
                      for b = (get-buffer h)
@@ -242,8 +242,8 @@ from the given string."
                       (if (member it history)
                           (remove it history)
                         (if (< ewm:c-max-history-num (length history))
-                            (nbutlast history) history)))))
-        (ewm:history-save history))))
+                            (nbutlast history) history))))
+          (ewm:history-save history)))))
 
 (defun ewm:history-back ()
   ;;undoキューに突っ込んでhistoryから一つ戻す
