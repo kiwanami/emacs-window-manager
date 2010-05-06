@@ -135,6 +135,11 @@
            (insert (format "%5i %s\n" ewm:debug-count (format ,@args)))))
        (incf ewm:debug-count))))
 
+(defun ewm:message-mark ()
+  (interactive)
+  (ewm:message "==================== mark ==== %s" 
+               (format-time-string "%H:%M:%S" (current-time))))
+
 (defun ewm:string-trim (txt)
   "Remove white space characters at head and tail
 from the given string."
@@ -352,6 +357,7 @@ from the given string."
     (if overrided
         (progn (set-buffer buf) (get-buffer-window buf))
       (let (special-display-function)
+        (ewm:message "#DISPLAY-BUFFER ")
         (apply 'display-buffer buf args))))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defun ewm:kill-buffer-hook ()
@@ -395,7 +401,7 @@ from the given string."
   ;;window配置を直すようにする。
   (when (and (ewm:managed-p) (null ewm:override-window-cfg-backup))
     (ewm:message "#OVERRIDE-SETUP-COMPLETION")
-    (ewm:debug-windows (ewm:pst-get-wm))
+    ;;(ewm:debug-windows (ewm:pst-get-wm))
     (setq ewm:override-window-cfg-backup 
           (current-window-configuration))))
 
@@ -440,7 +446,8 @@ from the given string."
   ad-do-it
   (when (and ad-return-value (ewm:managed-p))
     (ewm:message "#COMPARE-WINDOW-CONFIGURATIONS = %s" ad-return-value)
-    (ewm:debug-windows (ewm:pst-get-wm))))
+    ;;(ewm:debug-windows (ewm:pst-get-wm))
+    ))
 
 (defadvice set-window-configuration (around ewm:ad-override-long (cfg))
   (ewm:message "#SET-WINDOW-CONFIGURATION -->")
@@ -452,7 +459,7 @@ from the given string."
       (ad-set-arg 0 (ewm:$wcfg-wcfg cfg))
       (ewm:message "#SET-WINDOW-CONFIGURATION (ad-do-it)")
       ad-do-it
-      (ewm:debug-windows (ewm:$pst-wm pst-instance))
+      ;;(ewm:debug-windows (ewm:$pst-wm pst-instance))
       (when ewm:pst-minor-mode
         (cond
          ((ewm:managed-p)
@@ -2060,6 +2067,8 @@ from the given string."
         (set-window-configuration it))))
 
 ;; for dev
+;; (progn (setq ewm:debug t) (toggle-debug-on-error))
+;; (define-key ewm:pst-minor-mode-keymap (kbd "C-c C-m") 'ewm:message-mark)
 ;; (progn (kill-buffer (get-buffer-create "*ewm:debug*")) (eval-current-buffer) (ewm:start-management))
 ;; (ewm:stop-management)
 
