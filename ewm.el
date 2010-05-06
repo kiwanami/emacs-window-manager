@@ -1341,28 +1341,39 @@ from the given string."
 
 (defun ewm:dp-code-popup (buf)
   ;;とりあえず全部subで表示してみる
-  (ewm:message "#DP CODE popup : %s" buf)
-  (let ((buf-name (buffer-name buf)))
+  (let ((cb (current-buffer)))
+    (ewm:message "#DP CODE popup : %s (current %s / backup %s)" 
+                 buf cb ewm:override-window-cfg-backup))
+  (let ((buf-name (buffer-name buf))
+        (wm (ewm:pst-get-wm)))
     (cond
      ((ewm:history-recordable-p buf)
       (ewm:pst-update-windows)
       ;;記録対象なら履歴に残るのでupdateで表示を更新させる
       t)
+     ((and ewm:override-window-cfg-backup
+       (eq (selected-window) (wlf:get-window wm 'sub)))
+      ;;現在subならmainに表示しようとする
+      ;;minibuffer以外の補完バッファは動きが特殊なのでbackupをnilにする
+      (setq ewm:override-window-cfg-backup nil)
+      ;;一時的に表示するためにset-window-bufferを使う
+      ;;C-c C-lなどで元のバッファに戻すため
+      (set-window-buffer (wlf:get-window wm 'main) buf)
+      t)
      ((and ewm:c-code-show-main-regexp
            (string-match ewm:c-code-show-main-regexp buf-name))
-      (wlf:set-buffer (ewm:pst-get-wm) 'main buf t)
+      (wlf:set-buffer wm 'main buf t)
       t)
      (t
       (ewm:dp-code-popup-sub buf)
       t))))
 
 (defun ewm:dp-code-popup-sub (buf)
-  (let ((wm (ewm:pst-get-wm)))
+  (let ((wm (ewm:pst-get-wm))
+        (not-minibufp (= 0 (minibuffer-depth))))
     (ewm:with-advice
      (wlf:show wm 'sub)
-     (wlf:set-buffer 
-      wm 'sub buf 
-      (= 0 (minibuffer-depth))))))
+     (wlf:set-buffer wm 'sub buf not-minibufp))))
 
 (defun ewm:dp-code-leave (wm)
   )
