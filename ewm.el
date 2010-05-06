@@ -815,8 +815,6 @@ from the given string."
         (setq buffer-read-only t)))
     (wlf:set-buffer wm wname buf)))
 
-(define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
-
 (defvar ewm:def-plugin-history-list-mode-map 
   (ewm:define-keymap 
    '(("k"    . ewm:def-plugin-history-list-forward-command)
@@ -826,6 +824,8 @@ from the given string."
      ([up]   . ewm:def-plugin-history-list-forward-command)
      ([down] . ewm:def-plugin-history-list-back-command)
      )))
+
+(define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
 
 (defun ewm:def-plugin-history-list-forward-command ()
   (interactive)
@@ -1238,11 +1238,20 @@ from the given string."
 (defun ewm:def-plugin-clock-show-image ()
   (clear-image-cache)
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
-        (img (create-image ewm:def-plugin-clock-resized-file 'jpeg)))
+        (img (create-image ewm:def-plugin-clock-resized-file 'jpeg))
+        (map (make-sparse-keymap)))
+    (define-key map [mouse-1] 'ewm:def-plugin-clock-onclick)
     (with-current-buffer buf
       (erase-buffer)
       (goto-char (point-min))
-      (insert-image img))))
+      (insert "clock image")
+      (add-text-properties 
+       (point-min) (point-max)
+       (list 'display img 'keymap map 'mouse-face 'highlight)))))
+
+(defun ewm:def-plugin-clock-onclick ()
+  (interactive)
+  (browse-url ewm:def-plugin-clock-referer))
 
 (defun ewm:def-plugin-clock-show-text (&optional text)
   (let ((buf (get-buffer ewm:def-plugin-clock-buffer-name))
