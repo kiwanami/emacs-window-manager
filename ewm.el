@@ -801,11 +801,13 @@ from the given string."
                   (cnt 1))
               (loop for h in history-backup
                     for name = (if (stringp h) h (buffer-name h))
-                    do (insert (format "%3s %s\n" cnt name))
+                    do (insert (format "%3s %s %s\n" cnt name 
+                                       (if (buffer-modified-p h) "*" "")))
                     (incf cnt))
               (loop for h in history
                     for name = (if (stringp h) h (buffer-name h))
-                    do (insert (format "%3s %s\n" cnt name))
+                    do (insert (format "%3s %s %s\n" cnt name 
+                                       (if (buffer-modified-p h) "*" "")))
                     (incf cnt))
               (ewm:aif (get-buffer-window buf)
                   (with-selected-window it
@@ -813,7 +815,7 @@ from the given string."
               (setq header-line-format (format "Buffer History [%i]" (1- cnt))))
             (hl-line-highlight))
         (setq buffer-read-only t)))
-    (wlf:set-buffer wm wname buf)))
+    (wlf:set-buffer wm wname buf))) 
 
 (defvar ewm:def-plugin-history-list-mode-map 
   (ewm:define-keymap 
