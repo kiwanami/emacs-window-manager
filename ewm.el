@@ -228,13 +228,15 @@ from the given string."
   ;; フレームパラメーターに保存
   (ewm:message "#HISTORY-ADD : %s" buffer)
   (ewm:aif (get-buffer buffer)
-      (let ((history
-             (mapcar 
-              'car
-              (sort 
-               (loop for h in (append
-                               (ewm:history-get)
-                               (ewm:history-get-backup))
+      (let* ((prev-history (ewm:history-get))
+             (last-buffer (car prev-history))
+             (history
+              (mapcar 
+               'car
+               (sort 
+                (loop for h in (append
+                                (cdr prev-history)
+                                (ewm:history-get-backup))
                      for b = (get-buffer h)
                      if (and b (buffer-live-p b))
                      collect (cons b (float-time 
@@ -242,6 +244,8 @@ from the given string."
                                        'buffer-display-time b))))
                (lambda (i j) 
                  (> (cdr i) (cdr j)))))))
+        (when last-buffer
+          (setq history (cons last-buffer history)))
         (when (ewm:history-recordable-p it)
           (ewm:history-save-backup nil)
           (setq history
