@@ -190,6 +190,11 @@ from the given string."
                else
                collect (ewm:rt i 'ewm:face-subtitle))))
 
+(defun ewm:tp (text prop value)
+  (if (< 0 (length text))
+    (put-text-property 0 1 prop value text))
+  text)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
 
@@ -774,7 +779,9 @@ from the given string."
         for plugin = (ewm:plugin-get plugin-name)
         if (and (wlf:window-live-window winfo) plugin)
         do 
-        (funcall plugin frame wm winfo)))
+        (condition-case err
+            (funcall plugin frame wm winfo)
+          (nil (ewm:message "Plugin Error %s [%s]" plugin-name err)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
@@ -803,13 +810,19 @@ from the given string."
                   (cnt 1))
               (loop for h in history-backup
                     for name = (if (stringp h) h (buffer-name h))
-                    do (insert (format "%3s %s %s\n" cnt name 
-                                       (if (buffer-modified-p h) "*" "")))
+                    do (insert 
+                        (ewm:tp (format
+                                 "%3s %s %s\n" cnt name 
+                                 (if (buffer-modified-p h) "*" ""))
+                                'ewm:buffer h))
                     (incf cnt))
               (loop for h in history
                     for name = (if (stringp h) h (buffer-name h))
-                    do (insert (format "%3s %s %s\n" cnt name 
-                                       (if (buffer-modified-p h) "*" "")))
+                    do (insert 
+                        (ewm:tp (format 
+                                 "%3s %s %s\n" cnt name 
+                                 (if (buffer-modified-p h) "*" ""))
+                                'ewm:buffer h))
                     (incf cnt))
               (ewm:aif (get-buffer-window buf)
                   (with-selected-window it
@@ -817,16 +830,14 @@ from the given string."
               (setq header-line-format (format "Buffer History [%i]" (1- cnt))))
             (hl-line-highlight))
         (setq buffer-read-only t)))
-    (wlf:set-buffer wm wname buf))) 
+    (wlf:set-buffer wm wname buf)))
 
 (defvar ewm:def-plugin-history-list-mode-map 
   (ewm:define-keymap 
-   '(("k"    . ewm:def-plugin-history-list-forward-command)
-     ("j"    . ewm:def-plugin-history-list-back-command)
-     ("C-p"  . ewm:def-plugin-history-list-forward-command)
-     ("C-n"  . ewm:def-plugin-history-list-back-command)
-     ([up]   . ewm:def-plugin-history-list-forward-command)
-     ([down] . ewm:def-plugin-history-list-back-command)
+   '(("k" . previous-line)
+     ("j" . next-line)
+     ("<SPC>" . ewm:def-plugin-history-list-show-command)
+     ("C-m"   . ewm:def-plugin-history-list-select-command)
      )))
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
@@ -837,15 +848,35 @@ from the given string."
     (let ((cwin (selected-window)))
       (ewm:history-forward)
       (ewm:pst-update-windows)
-      (select-window cwin))))
+      (when (and cw (window-live-p cw))
+        (select-window cwin)))))
 
 (defun ewm:def-plugin-history-list-back-command ()
   (interactive)
   (when (ewm:managed-p)
-    (let ((cwin (selected-window)))
+    (let ((cwin (selected-window)) buf)
       (ewm:history-back)
       (ewm:pst-update-windows)
-      (select-window cwin))))
+      (when (and cw (window-live-p cw))
+        (select-window cwin)))))
+
+(defun ewm:def-plugin-history-list-select-command ()
+  (interactive)
+  (when (ewm:managed-p)
+    (save-excursion
+      (beginning-of-line)
+      (setq buf (get-text-property (point) 'ewm:buffer)))
+    (when (and buf (buffer-live-p buf))
+      (ewm:history-add buf)
+      (ewm:pst-update-windows))))
+
+(defun ewm:def-plugin-history-list-show-command ()
+  (interactive)
+  (when (ewm:managed-p)
+    (let ((cw (selected-window)))
+      (ewm:def-plugin-history-list-select-command)
+      (when (and cw (window-live-p cw))
+        (select-window cw)))))
 
 (ewm:plugin-register 'history-list 'ewm:def-plugin-history-list)
 
