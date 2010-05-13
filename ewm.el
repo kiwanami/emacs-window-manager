@@ -510,7 +510,7 @@ from the given string."
 ;;     (*)は必須
 ;; name    : (*)このパースペクティブの名前、シンボル
 ;; wm      : (*)wlfレイアウトオブジェクト
-;; main    : wlfのウインドウレイアウトのうち、最初にフォーカスを当てるべき場所の名前
+;; main    : wlfのウインドウレイアウトのうち、デフォルトでフォーカスを当てるべき場所の名前
 ;;         : nilなら適当に選ぶ。
 ;; start   : レイアウトや必要なフックなどのセットアップを行う。引数：wm。
 ;;         : この関数がnilなら何もしない。
@@ -565,7 +565,8 @@ from the given string."
   (ewm:with-advice
    (let* ((instance (ewm:pst-get-instance))
           (wm (ewm:$pst-wm instance)))
-     (when rebuild-windows
+     (when (or rebuild-windows 
+               (wlf:wset-live-p wm 1))
        (wlf:refresh wm)
        (ewm:aif (ewm:$pst-main instance)
            (wlf:select wm it)))
@@ -676,14 +677,33 @@ from the given string."
     (when (wlf:window-name-p wm window-name)
       (wlf:select wm window-name))))
 
+(defun ewm:pst-window-select-main ()
+  ;;パースペクティブのデフォルトウインドウを選択する
+  ;;nil なら何もしない
+  (let ((main (ewm:$pst-main (ewm:pst-get-instance)))
+        (wm (ewm:pst-get-wm)))
+    (when (and main (wlf:window-name-p wm main))
+      (wlf:select wm main))))
+
 (defun ewm:pst-window-toggle (window-name &optional selectp next-window)
-  ;;指定したウインドウをトグルする
+  ;;指定したウインドウの表示をトグルする
   (let ((wm (ewm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
       (wlf:toggle wm window-name)
       (if (wlf:window-displayed-p wm window-name)
           (and selectp (wlf:select wm window-name))
         (and next-window (wlf:select wm next-window))))))
+
+(defun ewm:pst-show-history-main ()
+  ;;パースペクティブの「メイン」ウインドウ（もしあれば）に履歴のトップ
+  ;;のバッファを表示して ewm:pst-update-windows する。
+  ;;履歴移動系のコマンドやバッファ切り替え乗っ取り系から呼ばれる。
+  (ewm:with-advice
+   (let* ((instance (ewm:pst-get-instance))
+          (wm (ewm:$pst-wm instance)))
+     (ewm:aif (ewm:$pst-main instance)
+         (wlf:set-buffer wm it (ewm:history-get-main-buffer)))
+     (ewm:pst-update-windows))))
 
 ;;; Keybindings / Minor Mode
 ;;;--------------------------------------------------
@@ -702,12 +722,12 @@ from the given string."
   (interactive)
   (when (ewm:managed-p)
     (ewm:history-forward)
-    (ewm:pst-update-windows)))
+    (ewm:pst-show-history-main)))
 (defun ewm:pst-history-back-command ()
   (interactive)
   (when (ewm:managed-p)
     (ewm:history-back)
-    (ewm:pst-update-windows)))
+    (ewm:pst-show-history-main)))
 
 ;;全パースペクティブに共通なキーマップ定義
 ;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (ewm:pst-change)
@@ -845,22 +865,20 @@ from the given string."
 (defun ewm:def-plugin-history-list-forward-command ()
   (interactive)
   (when (ewm:managed-p)
-    (let ((cwin (selected-window)))
-      (ewm:history-forward)
-      (ewm:pst-update-windows)
-      (when (and cw (window-live-p cw))
-        (select-window cwin)))))
+    (ewm:pst-history-forward-command)))
 
 (defun ewm:def-plugin-history-list-back-command ()
   (interactive)
   (when (ewm:managed-p)
-    (let ((cwin (selected-window)) buf)
-      (ewm:history-back)
-      (ewm:pst-update-windows)
-      (when (and cw (window-live-p cw))
-        (select-window cwin)))))
+    (ewm:pst-history-back-command)))
 
 (defun ewm:def-plugin-history-list-select-command ()
+  (interactive)
+  (when (ewm:managed-p)
+    (ewm:def-plugin-history-list-show-command)
+    (ewm:pst-window-select-main)))
+
+(defun ewm:def-plugin-history-list-show-command ()
   (interactive)
   (when (ewm:managed-p)
     (save-excursion
@@ -868,15 +886,7 @@ from the given string."
       (setq buf (get-text-property (point) 'ewm:buffer)))
     (when (and buf (buffer-live-p buf))
       (ewm:history-add buf)
-      (ewm:pst-update-windows))))
-
-(defun ewm:def-plugin-history-list-show-command ()
-  (interactive)
-  (when (ewm:managed-p)
-    (let ((cw (selected-window)))
-      (ewm:def-plugin-history-list-select-command)
-      (when (and cw (window-live-p cw))
-        (select-window cw)))))
+      (ewm:pst-show-history-main))))
 
 (ewm:plugin-register 'history-list 'ewm:def-plugin-history-list)
 
@@ -1000,6 +1010,7 @@ from the given string."
    '(("C-m" . ewm:def-plugin-imenu-jump-command)
      ("j" . next-line)
      ("k" . previous-line)
+     ("q" . ewm:pst-window-select-main)
      ("<SPC>" . ewm:def-plugin-imenu-show-command)
      )))
 
@@ -1354,9 +1365,14 @@ from the given string."
          :switch 'ewm:dp-code-switch
          :popup  'ewm:dp-code-popup
          :leave  'ewm:dp-code-leave
-         :keymap ewm:dp-code-minor-mode-map)))
-    (if (ewm:history-recordable-p prev-selected-buffer)
-        (ewm:history-add prev-selected-buffer))
+         :keymap ewm:dp-code-minor-mode-map))
+       (buf (or prev-selected-buffer
+                (ewm:history-get-main-buffer))))
+
+    (when (ewm:history-recordable-p prev-selected-buffer)
+      (ewm:history-add prev-selected-buffer))
+    
+    (wlf:set-buffer code-wm 'main buf)
     pst))
 
 (defun ewm:dp-code-start (wm)
@@ -1364,14 +1380,12 @@ from the given string."
 
 (defun ewm:dp-code-update (wm)
   (ewm:message "#DP CODE update")
-  (ewm:aif 
-      (ewm:history-get-main-buffer)
-      (wlf:set-buffer wm       'main it t)))
+  )
 
 (defun ewm:dp-code-switch (buf)
   (ewm:message "#DP CODE switch : %s" buf)
   (if (ewm:history-recordable-p buf)
-      (ewm:pst-update-windows) 
+      (ewm:pst-show-history-main)
     nil))
 
 (defun ewm:dp-code-popup (buf)
@@ -1383,7 +1397,7 @@ from the given string."
         (wm (ewm:pst-get-wm)))
     (cond
      ((ewm:history-recordable-p buf)
-      (ewm:pst-update-windows)
+      (ewm:pst-show-history-main)
       ;;記録対象なら履歴に残るのでupdateで表示を更新させる
       t)
      ((and ewm:override-window-cfg-backup
@@ -1481,7 +1495,9 @@ from the given string."
         (:name right)
         (:name sub :default-hide t)))
 
-(defvar ewm:c-doc-show-main-regexp "\\*\\(Help\\|info\\)\\*")
+(setq ewm:c-doc-show-main-func
+      (lambda (buf)
+        (string-match "\\*\\(Help\\|info\\|w3m\\)\\*" buf)))
 
 (ewm:pst-register 'doc 'ewm:dp-doc-setup)
 
@@ -1508,14 +1524,13 @@ from the given string."
     (wlf:set-buffer doc-wm 'left buf)
     (with-current-buffer buf
       (follow-mode 1))
-
     pst))
 
 (defun ewm:dp-doc-start (wm)
   )
 
 (defun ewm:dp-doc-update (wm)
-  (ewm:message "#DP DOC update ")
+  (ewm:message "#DP DOC update / %s" (ewm:debug-windows wm))
   ;;左右を同じにする
   (let ((leftbuf  (wlf:get-buffer wm 'left))
         (rightbuf (wlf:get-buffer wm 'right)))
@@ -1544,7 +1559,6 @@ from the given string."
       nil)))
 
 (defun ewm:dp-doc-popup (buf)
-  ;;記録バッファとInfo,help以外はsubで表示
   (ewm:message "#DP DOC popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
@@ -1618,7 +1632,7 @@ from the given string."
         (:name sub :buffer "*Help*" :default-hide t)
         (:name history :plugin history-list :default-hide nil)))
 
-(defvar ewm:c-two-show-side-regexp "\\*\\(Help\\|info\\)\\*")
+(defvar ewm:c-two-show-side-regexp "\\*\\(Help\\|info\\|w3m\\)\\*")
 
 (ewm:pst-register 'two 'ewm:dp-two-setup)
 
@@ -1646,9 +1660,7 @@ from the given string."
 
 (defun ewm:dp-two-update (wm)
   (ewm:message "#DP TWO update ")
-  (ewm:aif 
-      (ewm:history-get-main-buffer)
-      (wlf:set-buffer wm 'left it t)))
+)
 
 (defun ewm:dp-two-switch (buf)
   (ewm:message "#DP TWO switch : %s" buf)
@@ -1665,7 +1677,7 @@ from the given string."
           t)
          ((ewm:history-recordable-p buf)
           ;;普通の編集対象なら履歴につっこんで更新
-          (ewm:pst-update-windows)
+          (ewm:pst-show-history-main)
           t)
          (t 
           ;;それ以外ならとりあえず表示してみる
@@ -1681,7 +1693,7 @@ from the given string."
       (wlf:set-buffer (ewm:pst-get-wm) 'right buf)
       t)
      ((ewm:history-recordable-p buf)
-      (ewm:pst-update-windows)
+      (ewm:pst-show-history-main)
       t)
      (t
       (ewm:dp-two-popup-sub buf)
@@ -1753,6 +1765,10 @@ from the given string."
          ("C-c . d" . ewm:dp-two-double-column-command)
          ("C-c . M" . ewm:dp-two-main-maximize-toggle-command))))
 
+;;; dashboard / dashboard buffers perspective
+;;;--------------------------------------------------
+
+
 ;;; array / arrange buffers perspective
 ;;;--------------------------------------------------
 
@@ -1760,6 +1776,19 @@ from the given string."
 (defvar ewm:c-array-max-rows 4)  ; 並べる横最大数
 (defvar ewm:c-array-max-cols 5)  ; 並べる縦最大数
 
+(setq ewm:c-dp-array-more-buffers-func 
+      (lambda (b)
+               (let ((bn (buffer-name b)))
+                 (and 
+                  (not  ; 表示しないもの
+                   (memq (buffer-local-value 'major-mode b)  
+                         '(dired-mode)))
+                  (or
+                   (not (string-match "^ ?\\*" bn)) ; 内部バッファは表示しないが、
+                   (string-match ; 以下のものは表示する
+                    "\\*\\(Help\\|info\\|scratch\\|w3m\\|Messages\\)\\*" 
+                    bn))))))
+      
 (ewm:pst-register 'array 'ewm:dp-array-setup)
 
 (defun ewm:dp-array-make-recipe (cols rows)
@@ -1824,6 +1853,7 @@ from the given string."
 
 (defun ewm:dp-array-calculate-size (num)
   ;;num個のサイズが入る縦横幅を計算する
+  ;;なるべく縦横の数が離れすぎないような数を探す
   (labels
       ((loop-rows (cols rows)
                   (loop for i from 1 to rows
@@ -1898,8 +1928,7 @@ from the given string."
           (copy-list (ewm:history-get-backup))
           )))
     (loop for b in (buffer-list)
-          if (and (or (not (string-match "^ ?\\*" (buffer-name b)))
-                      (string-match "\\*\\(Help\\|info|scratch|Messages\\)\\*" (buffer-name b)))
+          if (and (funcall ewm:c-dp-array-more-buffers-func b)
                   (not (member b ret)))
           do (push b ret))
     (nreverse ret)))
@@ -2085,7 +2114,6 @@ from the given string."
   (setq ewm:save-window-configuration 
         (current-window-configuration))
 
-  ;;(ewm:history-save (list (current-buffer))) ; カレントのみ
   (ewm:history-add-loaded-buffers) ; 全部つっこむ
   (ewm:history-save-backup nil)
   (ad-activate-regexp "^ewm:ad-override" t)
