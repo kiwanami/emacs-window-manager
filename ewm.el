@@ -644,9 +644,10 @@ from the given string."
         (ewm:pst-change it))))
 
 (defun ewm:pst-change-keymap (new-keymap)
-  (let ((map (copy-keymap ewm:pst-minor-mode-keymap)))
+  (let ((map (copy-keymap
+              (or new-keymap ewm:pst-minor-mode-keymap))))
     (when new-keymap
-      (set-keymap-parent map new-keymap))
+      (set-keymap-parent map ewm:pst-minor-mode-keymap))
     (ewm:aif (assq 'ewm:pst-minor-mode minor-mode-map-alist)
         (setf (cdr it) map))))
 
