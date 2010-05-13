@@ -2028,10 +2028,11 @@ from the given string."
                  (count-lines (point-min) (point-max))))))))
    (t
     (insert
-     (ewm:rt-format "Buffer Name: %s\nMajor Mode: %s"
-             (buffer-name selected-buf) 
-             (format "%s" (buffer-local-value
-                           'major-mode selected-buf)))))))
+     (ewm:rt-format 
+      "Buffer Name: %s\nMajor Mode: %s"
+      (substring-no-properties (buffer-name selected-buf))
+      (format "%s" (buffer-local-value
+                    'major-mode selected-buf)))))))
 
 (defvar ewm:dp-array-overlay-focus nil "[internal]")
 
