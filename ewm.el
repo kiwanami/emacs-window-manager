@@ -727,9 +727,18 @@ from the given string."
          (wlf:set-buffer wm it (ewm:history-get-main-buffer)))
      (ewm:pst-update-windows))))
 
-;;; Keybindings / Minor Mode
+;;; Commands / Key bindings / Minor Mode
 ;;;--------------------------------------------------
 
+(defun ewm:pst-chage-command ()
+  (interactive)
+  (let* ((pst-list (mapcar (lambda (i) (symbol-name (car i))) ewm:pst-alist))
+         (pst-name (completing-read "Chagne parspective: " pst-list)))
+    (when pst-name
+      (ewm:pst-change (intern pst-name)))))
+(defun ewm:pst-window-select-main-command ()
+  (interactive)
+  (ewm:pst-window-select-main))
 (defun ewm:pst-update-windows-command ()
   (interactive)
   (when (ewm:managed-p)
@@ -824,6 +833,43 @@ from the given string."
         (condition-case err
             (funcall plugin frame wm winfo)
           (nil (ewm:message "Plugin Error %s [%s]" plugin-name err)))))
+
+(defun ewm:plugin-switch (plugin-name)
+  ;;現在選択されているウインドウのプラグインを取り替える
+  (let* ((wm (ewm:pst-get-wm))
+         (wname (wlf:get-window-name wm (selected-window)))
+         (plugin-symbol (if (symbolp plugin-name) 
+                            plugin-name
+                          (intern plugin-name))))
+    (when wname
+      (ewm:pst-window-plugin-set wm wname plugin-symbol)
+      (ewm:pst-update-windows))))
+
+(defun ewm:plugin-switch-command ()
+  (interactive)
+  ;;プラグインを選択して取り替える
+  (let* ((wm (ewm:pst-get-wm))
+         (wname (wlf:get-window-name wm (selected-window)))
+         (cplg (or (if wname 
+                       (ewm:pst-window-plugin-get wm wname)) 
+                   "No plugin"))
+         (plg-list (mapcar (lambda (i) 
+                             (symbol-name (car i))) 
+                           ewm:plugin-alist))
+         (plg-name (completing-read
+                    (format "Chagne plugin [current: %s] -> : " cplg)
+                    plg-list)))
+    (when plg-name
+      (ewm:plugin-switch plg-name))))
+
+(defun ewm:plugin-remove-command ()
+  (interactive)
+  ;;現在選択されているウインドウのプラグインを外す
+  (let* ((wm (ewm:pst-get-wm))
+         (wname (wlf:get-window-name wm (selected-window))))
+    (when wname
+      (ewm:pst-window-plugin-set wm wname nil)
+      (ewm:pst-update-windows))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
