@@ -41,7 +41,7 @@
 ;; 2) 以下を .emacs に書く
 ;;    (require 'ewm)
 ;; 3) M-x ewm:start-management で開始。
-;;    ※止めるには C-c . C-q か、 M-x ewm:stop-management で終了。
+;;    ※止めるには (prefix) C-q か、 M-x ewm:stop-management で終了。
 
 ;; ○開発方針
 ;; とりあえずやりたいこと（Window管理、パースペクティブ、プラグイン）を
@@ -104,6 +104,8 @@
           (setq buffer-read-only t)) buf)
       "Blank buffer.")
 
+(defvar ewm:prefix-key "C-c ; ")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Macro / Utilities
 
@@ -112,16 +114,34 @@
      (if it ,then-form ,@else-forms)))
 (put 'ewm:aif 'lisp-indent-function 2)
 
-(defun ewm:define-keymap (keymap-list)
+(defun ewm:define-keymap (keymap-list &optional prefix)
   (let ((map (make-sparse-keymap)))
     (mapc 
      (lambda (i)
        (define-key map
          (if (stringp (car i))
-             (read-kbd-macro (car i)) (car i))
+             (read-kbd-macro 
+              (if prefix 
+                  (replace-regexp-in-string "prefix" prefix (car i))
+                (car i)))
+           (car i))
          (cdr i)))
      keymap-list)
     map))
+
+(defun ewm:add-keymap (keymap keymap-list &optional prefix)
+  (mapc 
+   (lambda (i)
+     (define-key keymap
+       (if (stringp (car i))
+           (read-kbd-macro 
+            (if prefix 
+                (replace-regexp-in-string "prefix" prefix (car i))
+              (car i)))
+         (car i))
+       (cdr i)))
+   keymap-list)
+  keymap)
 
 (defvar ewm:debug nil "Debug output switch.") ; debug
 (defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
@@ -680,7 +700,7 @@ from the given string."
 
 (defun ewm:pst-window-select-main ()
   ;;パースペクティブのデフォルトウインドウを選択する
-  ;;nil なら何もしない
+  ;;main スロットが nil なら何もしない
   (let ((main (ewm:$pst-main (ewm:pst-get-instance)))
         (wm (ewm:pst-get-wm)))
     (when (and main (wlf:window-name-p wm main))
@@ -734,12 +754,12 @@ from the given string."
 ;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (ewm:pst-change)
 (defvar ewm:pst-minor-mode-keymap
       (ewm:define-keymap
-       '(("C-c . C-q"   . ewm:stop-management)
-         ("C-c . C-l"   . ewm:pst-update-windows-command)
-         ("C-c . n"     . ewm:pst-history-forward-command)
-         ("C-c . p"     . ewm:pst-history-back-command)
-         ("C-c . C-p"   . ewm:pst-change-prev-pst-command)
-         )))
+       '(("prefix Q"   . ewm:stop-management)
+         ("prefix L"   . ewm:pst-update-windows-command)
+         ("prefix n"     . ewm:pst-history-forward-command)
+         ("prefix p"     . ewm:pst-history-back-command)
+         ("prefix P"   . ewm:pst-change-prev-pst-command)
+         ) ewm:prefix-key))
 
 (defvar ewm:pst-minor-mode-hook nil)
 
@@ -859,6 +879,7 @@ from the given string."
      ("j" . next-line)
      ("<SPC>" . ewm:def-plugin-history-list-show-command)
      ("C-m"   . ewm:def-plugin-history-list-select-command)
+     ("q"     . ewm:pst-window-select-main)
      )))
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
@@ -1407,7 +1428,7 @@ from the given string."
       ;;minibuffer以外の補完バッファは動きが特殊なのでbackupをnilにする
       (setq ewm:override-window-cfg-backup nil)
       ;;一時的に表示するためにset-window-bufferを使う
-      ;;C-c . C-lなどで元のバッファに戻すため
+      ;;(prefix) C-lなどで元のバッファに戻すため
       (set-window-buffer (wlf:get-window wm 'main) buf)
       t)
      ((and ewm:c-code-show-main-regexp
@@ -1473,15 +1494,11 @@ from the given string."
 
 (defvar ewm:dp-code-minor-mode-map 
       (ewm:define-keymap
-       '(("C-c . m" . ewm:dp-code-navi-main-command)
-         ("C-c . f" . ewm:dp-code-navi-files-command)
-         ("C-c . h" . ewm:dp-code-navi-history-command)
-         ("C-c . i" . ewm:dp-code-navi-imenu-command)
-         ("C-c . s" . ewm:dp-code-navi-sub-command)
-         ("C-c . I" . ewm:dp-code-imenu-toggle-command)
-         ("C-c . S" . ewm:dp-code-sub-toggle-command)
-         ("C-c . C" . ewm:dp-code-toggle-clock-command)
-         ("C-c . M" . ewm:dp-code-main-maximize-toggle-command))))
+       '(("prefix I" . ewm:dp-code-imenu-toggle-command)
+         ("prefix S" . ewm:dp-code-sub-toggle-command)
+         ("prefix C" . ewm:dp-code-toggle-clock-command)
+         ("prefix M" . ewm:dp-code-main-maximize-toggle-command))
+       ewm:prefix-key))
 
 ;;; document / Document view perspective
 ;;;--------------------------------------------------
@@ -1608,10 +1625,6 @@ from the given string."
 (defun ewm:dp-doc-navi-sub-command ()
   (interactive)
   (wlf:select (ewm:pst-get-wm) 'sub))
-(defun ewm:dp-doc-column-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'right)
-  (ewm:pst-update-windows))
 (defun ewm:dp-doc-sub-toggle-command ()
   (interactive)
   (wlf:toggle (ewm:pst-get-wm) 'sub)
@@ -1623,13 +1636,12 @@ from the given string."
 
 (defvar ewm:dp-doc-minor-mode-map 
       (ewm:define-keymap
-       '(("C-c . m" . ewm:dp-doc-navi-main-command)
-         ("C-c . s" . ewm:dp-doc-navi-sub-command)
-         ("C-c . R" . ewm:dp-doc-column-toggle-command)
-         ("C-c . B" . ewm:dp-doc-bottom-toggle-command)
-         ("C-c . S" . ewm:dp-doc-sub-toggle-command)
-         ("C-c . M" . ewm:dp-doc-main-maximize-toggle-command)
-         ("C-c . I" . info))))
+       '(("prefix m" . ewm:dp-doc-navi-main-command)
+         ("prefix s" . ewm:dp-doc-navi-sub-command)
+         ("prefix S" . ewm:dp-doc-sub-toggle-command)
+         ("prefix M" . ewm:dp-doc-main-maximize-toggle-command)
+         ("prefix I" . info))
+       ewm:prefix-key))
 
 ;;; two / Two column editing perspective
 ;;;--------------------------------------------------
@@ -1750,14 +1762,6 @@ from the given string."
   (interactive)
   (wlf:select (ewm:pst-get-wm) 'history))
 
-(defun ewm:dp-two-column-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'right)
-  (ewm:pst-update-windows))
-(defun ewm:dp-two-bottom-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'sub 'history)
-  (ewm:pst-update-windows))
 (defun ewm:dp-two-history-toggle-command ()
   (interactive)
   (wlf:toggle (ewm:pst-get-wm) 'history)
@@ -1778,15 +1782,11 @@ from the given string."
 
 (defvar ewm:dp-two-minor-mode-map 
       (ewm:define-keymap
-       '(("C-c . m" . ewm:dp-two-navi-left-command)
-         ("C-c . h" . ewm:dp-two-navi-history-command)
-         ("C-c . s" . ewm:dp-two-navi-sub-command)
-         ("C-c . R" . ewm:dp-two-column-toggle-command)
-         ("C-c . B" . ewm:dp-two-bottom-toggle-command)
-         ("C-c . S" . ewm:dp-two-sub-toggle-command)
-         ("C-c . H" . ewm:dp-two-history-toggle-command)
-         ("C-c . d" . ewm:dp-two-double-column-command)
-         ("C-c . M" . ewm:dp-two-main-maximize-toggle-command))))
+       '(("prefix d" . ewm:dp-two-double-column-command)
+         ("prefix S" . ewm:dp-two-sub-toggle-command)
+         ("prefix H" . ewm:dp-two-history-toggle-command)
+         ("prefix M" . ewm:dp-two-main-maximize-toggle-command))
+       ewm:prefix-key))
 
 ;;; dashboard / dashboard buffers perspective
 ;;;--------------------------------------------------
@@ -2118,10 +2118,13 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Setup
 
-(define-key ewm:pst-minor-mode-keymap (kbd "C-c . 1") 'ewm:dp-code)
-(define-key ewm:pst-minor-mode-keymap (kbd "C-c . 2") 'ewm:dp-two)
-(define-key ewm:pst-minor-mode-keymap (kbd "C-c . 3") 'ewm:dp-doc)
-(define-key ewm:pst-minor-mode-keymap (kbd "C-c . 4") 'ewm:dp-array)
+(ewm:add-keymap 
+ ewm:pst-minor-mode-keymap
+ '(("prefix 1" . ewm:dp-code)
+   ("prefix 2" . ewm:dp-two) 
+   ("prefix 3" . ewm:dp-doc)
+   ("prefix 4" . ewm:dp-array))
+ ewm:prefix-key)
 
 (defvar ewm:save-window-configuration nil) ; backup
 
@@ -2175,7 +2178,7 @@ from the given string."
 
 ;; for dev
 ;; (progn (setq ewm:debug t) (toggle-debug-on-error))
-;; (define-key ewm:pst-minor-mode-keymap (kbd "C-c . C-m") 'ewm:message-mark)
+;; (define-key ewm:pst-minor-mode-keymap (kbd "C-c ; C-m") 'ewm:message-mark)
 ;; (progn (kill-buffer (get-buffer-create "*ewm:debug*")) (eval-current-buffer) (ewm:start-management))
 ;; (ewm:stop-management)
 
