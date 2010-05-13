@@ -414,15 +414,21 @@ from the given string."
 (defun ewm:override-custom-wcfg-p (cfg)
   (ewm:$wcfg-p cfg))
 
+(defvar ewm:override-window-cfg-change-now nil) ; ewm:override-window-cfg-change 実行中ならt。再帰呼び出しを防ぐ。
+
 (defun ewm:override-window-cfg-change ()
   ;; window-configuration-change-hook関数
-  (when (ewm:managed-p)
-    (when (and (= (minibuffer-depth) 0) ; ミニバッファ実行中でなくて
-               (and ewm:override-window-cfg-backup ; 補完前のウインドウ配置が空でなくて
-                    (not (compare-window-configurations ; 配置が違ってたら
-                          ewm:override-window-cfg-backup 
-                          (current-window-configuration)))))
-      (ewm:override-restore-window-cfg)))) ; 配置を戻す
+  (when (and (ewm:managed-p) ; ewm管理中で
+             (null ewm:override-window-cfg-change-now) ; 初回実行で
+             (= (minibuffer-depth) 0) ; ミニバッファ実行中でなくて
+             (and ewm:override-window-cfg-backup ; 補完前のウインドウ配置が空でなくて
+                  (not (compare-window-configurations ; 配置が違ってたら
+                        ewm:override-window-cfg-backup 
+                        (current-window-configuration)))))
+    (setq ewm:override-window-cfg-change-now t)
+    (unwind-protect
+        (ewm:override-restore-window-cfg) ; 配置を戻す
+      (setq ewm:override-window-cfg-change-now nil))))
 
 (defun ewm:override-setup-completion ()
   ;;completionバッファが終了したとき、set-window-configurationが呼ばれずに
