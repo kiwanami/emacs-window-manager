@@ -86,6 +86,12 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl))
+
+(require 'imenu)
+(require 'easymenu)
+(require 'windmove)
+
 (require 'window-layout)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -143,7 +149,8 @@
    keymap-list)
   keymap)
 
-(defvar ewm:debug nil "Debug output switch.") ; debug
+(eval-and-compile
+  (defvar ewm:debug nil "Debug output switch.")) ; debug
 (defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
 
 (defmacro ewm:message (&rest args)
@@ -405,6 +412,7 @@ from the given string."
   (ewm:message " # WINDOWS : %s" 
                (loop for winfo in (wlf:wset-winfo-list wm)
                      collect (wlf:window-window winfo))))
+
 ;;ewm:$wcfg ウインドウ配置構造体
 ;; wcfg  : 本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
 ;; pst   : パースペクティブのインスタンスのコピー
@@ -878,6 +886,44 @@ from the given string."
       (ewm:pst-update-windows))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ### Menu Definition
+
+(defvar ewm:pst-minor-mode-menu-spec nil)
+
+(defun ewm:menu-define ()
+  (let (perspectives plugins)
+    (setq perspectives
+          (loop for i in ewm:pst-alist
+                for n = (car i)
+                collect 
+                (vector (symbol-name n) `(lambda () (interactive) (ewm:pst-change ',n)) t)))
+    (setq plugins
+          (loop for i in ewm:plugin-alist
+                for n = (car i)
+                collect 
+                (vector (symbol-name n) `(lambda () (interactive) (ewm:plugin-switch ',n)) t)))
+
+    (setq ewm:pst-minor-mode-menu-spec 
+          `("EWM"
+            ["History forward" ewm:pst-history-forward-command t]
+            ["History back"    ewm:pst-history-back-command t]
+            ["Update windows"  ewm:pst-update-windows-command t]
+            "----"
+            ["Quit EWM"  ewm:stop-management t]
+            "----"
+            "Perspectives" ,@perspectives
+            "----"
+            "Plugins" ,@plugins
+            ))
+    (easy-menu-define ewm-menu-map
+      ewm:pst-minor-mode-keymap "EWM menu map" 
+      ewm:pst-minor-mode-menu-spec)
+    ;; (easy-menu-add ewm-menu-map ewm:pst-minor-mode-keymap)
+    ))
+
+;; (ewm:menu-define)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
 
 ;;; history-list / 履歴一覧
@@ -988,7 +1034,6 @@ from the given string."
 ;; anything-config.el の imenu を参考に実装
 ;; （文字列で比較しているのがちょっとダサイ）
 
-(require 'imenu)
 (defvar ewm:def-plugin-imenu-delimiter " / ")
 (defvar ewm:def-plugin-imenu-cached-alist nil)
 (make-variable-buffer-local 'ewm:def-plugin-imenu-cached-alist)
@@ -2098,8 +2143,6 @@ from the given string."
 
 ;; Commands / Keybindings
 
-(require 'windmove)
-
 (defun ewm:dp-array ()
   (interactive)
   (ewm:pst-change 'array))
@@ -2207,7 +2250,8 @@ from the given string."
 
   (ewm:pst-set-prev-pst nil)
   (ewm:dp-code)
-  (ewm:pst-minor-mode 1))
+  (ewm:pst-minor-mode 1)
+  (ewm:menu-define))
 
 (defun ewm:stop-management ()
   ;;現在のフレームの管理を終了
