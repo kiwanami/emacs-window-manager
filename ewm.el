@@ -224,7 +224,8 @@ from the given string."
   buffer-history-backup)
 
 (defun ewm:history-recordable-p (buffer)
-  (funcall ewm:c-recordable-buffer-p buffer))
+  (if (and buffer (buffer-live-p buffer))
+      (funcall ewm:c-recordable-buffer-p buffer)))
 
 (defun ewm:history-add (buffer)
   ;; 死んでるバッファのクリア
@@ -375,7 +376,7 @@ from the given string."
              (ewm:managed-p))
     ;; killされたら履歴からも消す
     (ewm:history-delete (current-buffer))
-    (ewm:pst-update-windows)))
+    (ewm:pst-show-history-main)))
 
 ;; set-window-configuration 対策
 ;; いろいろ試行錯誤中。
@@ -1501,6 +1502,12 @@ from the given string."
 
 (ewm:pst-register 'doc 'ewm:dp-doc-setup)
 
+(defun ewm:dp-doc-set-doc-buffer (buf)
+  (ewm:frame-param-set 'ewm:dp-doc-buffer buf))
+
+(defun ewm:dp-doc-get-doc-buffer ()
+  (ewm:frame-param-get 'ewm:dp-doc-buffer))
+
 (defun ewm:dp-doc-setup ()
   (let* 
       ((doc-wm 
@@ -1518,8 +1525,11 @@ from the given string."
          :popup  'ewm:dp-doc-popup
          :leave  'ewm:dp-doc-leave
          :keymap ewm:dp-doc-minor-mode-map))
-       (buf (or prev-selected-buffer
-                (ewm:history-get-main-buffer))))
+       (buf (ewm:dp-doc-get-doc-buffer)))
+
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (or prev-selected-buffer
+                    (ewm:history-get-main-buffer))))
     
     (wlf:set-buffer doc-wm 'left buf)
     (with-current-buffer buf
@@ -1562,7 +1572,7 @@ from the given string."
   (ewm:message "#DP DOC popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((or (string-match ewm:c-doc-show-main-regexp buf-name)
+     ((or (funcall ewm:c-doc-show-main-func buf-name)
           (ewm:history-recordable-p buf))
       (ewm:dp-doc-set-main-buffer buf)
       t)
@@ -1577,6 +1587,11 @@ from the given string."
      (wlf:set-buffer wm 'sub buf))))
 
 (defun ewm:dp-doc-leave (wm)
+  (let ((buf (get-buffer (wlf:get-buffer wm 'left))))
+    (when (and buf (buffer-live-p buf))
+      (unless (ewm:history-recordable-p buf) ; ドキュメント的バッファだったら
+        (ewm:dp-doc-set-doc-buffer buf)      ; あとで再表示できるようにして、
+        (setq prev-selected-buffer nil))))   ; 次のパースペクティブは履歴から持ってきてもらう
   (loop for b in (buffer-list)
         do (with-current-buffer b
              (follow-mode -1))))
@@ -1652,7 +1667,15 @@ from the given string."
          :switch 'ewm:dp-two-switch
          :popup  'ewm:dp-two-popup
          :leave  'ewm:dp-two-leave
-         :keymap ewm:dp-two-minor-mode-map)))
+         :keymap ewm:dp-two-minor-mode-map))
+       (buf (or prev-selected-buffer
+                (ewm:history-get-main-buffer))))
+
+    (when (ewm:history-recordable-p prev-selected-buffer)
+      (ewm:history-add prev-selected-buffer))
+    
+    (wlf:set-buffer two-wm 'left buf)
+
     pst))
 
 (defun ewm:dp-two-start (wm)
