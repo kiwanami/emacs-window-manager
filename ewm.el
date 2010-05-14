@@ -264,7 +264,7 @@ from the given string."
       (let* ((prev-history (ewm:history-get))
              (last-buffer (car prev-history))
              (history
-              (mapcar 
+             (mapcar 
                'car
                (sort 
                 (loop for h in (append
@@ -394,8 +394,10 @@ from the given string."
     (if overrided
         (progn (set-buffer buf) (get-buffer-window buf))
       (let (special-display-function)
-        (ewm:message "#DISPLAY-BUFFER ")
-        (apply 'display-buffer buf args))))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
+        (ewm:message "#DISPLAY-BUFFER ") ;;無限ループになる(TODO)
+        (set-window-buffer (selected-window) buf) ; fixme!!
+        ;(apply 'display-buffer buf args))))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
+        ))))
 
 (defun ewm:kill-buffer-hook ()
   (ewm:message "#KILL HOOK %s" (current-buffer))
