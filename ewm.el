@@ -1001,7 +1001,7 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
 
-;;; history-list / 履歴一覧
+;;; history-list / バッファ・履歴一覧
 ;;;--------------------------------------------------
 
 (defun ewm:def-plugin-history-list (frame wm winfo)
@@ -1039,10 +1039,9 @@ from the given string."
                                  (if (buffer-modified-p h) "*" ""))
                                 'ewm:buffer h))
                     (incf cnt))
-              (ewm:aif (get-buffer-window buf)
-                  (with-selected-window it
-                    (goto-line (1+ (length history-backup)))))
-              (setq header-line-format (format "Buffer History [%i]" (1- cnt))))
+              (goto-line (1+ (length history-backup)))
+              (setq header-line-format
+                    (format "Buffer History [%i]" (1- cnt))))
             (hl-line-highlight))
         (setq buffer-read-only t)))
     (wlf:set-buffer wm wname buf)))
@@ -1051,12 +1050,22 @@ from the given string."
   (ewm:define-keymap 
    '(("k" . previous-line)
      ("j" . next-line)
+     ("d" . ewm:def-plugin-history-list-kill-command)
      ("<SPC>" . ewm:def-plugin-history-list-show-command)
      ("C-m"   . ewm:def-plugin-history-list-select-command)
      ("q"     . ewm:pst-window-select-main-command)
      )))
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
+
+(defun ewm:def-plugin-history-list-kill-command ()
+  (interactive)
+  (when (ewm:managed-p)
+    (save-excursion
+      (beginning-of-line)
+      (setq buf (get-text-property (point) 'ewm:buffer)))
+    (when (and buf (buffer-live-p buf))
+      (kill-buffer buf))))
 
 (defun ewm:def-plugin-history-list-forward-command ()
   (interactive)
