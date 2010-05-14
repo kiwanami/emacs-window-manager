@@ -528,25 +528,19 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Framework
 
-(defvar ewm:pst-alist nil "[internal] Perspective registory.")
+(defvar ewm:pst-alist nil "[internal] Perspective class registory.")
 (setq ewm:pst-alist nil)
 
-;; perspective setup function は、ewm:pst構造体を返す。
-;; 基本的に構造体だけを返すようにして、レイアウトや
-;; 必要なフックなどのセットアップが必要であれば下のstartで行う。
-;; setup で使える dynamic bind 変数 : prev-selected-buffer
-
-(defun ewm:pst-register (name setup-func)
-  ;;パースペクティブの登録
-  (setq ewm:pst-alist
-        (cons (cons name setup-func)
-              ewm:pst-alist)))
-
-;;ewm:$pst(perspective) 構造体
+;; ewm:$pst-class 構造体
 ;;   →この構造体でパースペクティブの定義を行う
 ;;     (*)は必須
 ;; name    : (*)このパースペクティブの名前、シンボル
-;; wm      : (*)wlfレイアウトオブジェクト
+;; init    : (*)このパースペクティブのコンストラクタ
+;;         : 返値として ewm:$pst 構造体を返す。
+;;         : 基本的に ewm:$pst 構造体だけを返すようにして、レイアウトや
+;;         : 必要なフックなどのセットアップが必要であれば下のstartで行う。
+;;         : init で使える dynamic bind 変数 : prev-selected-buffer
+;; title   : (*)このパースペクティブのタイトル（人が読む用）
 ;; main    : wlfのウインドウレイアウトのうち、デフォルトでフォーカスを当てるべき場所の名前
 ;;         : nilなら適当に選ぶ。
 ;; start   : レイアウトや必要なフックなどのセットアップを行う。引数：wm。
@@ -566,9 +560,44 @@ from the given string."
 ;;         : プラグインの更新などが必要であればewm:pst-update-windowsを呼ぶこと。
 ;; leave   : このパースペクティブを終了する際に呼ばれる関数。引数：wm。
 ;;         : この関数がnilなら何もしない。
-;; keymap  : このパースペクティブで有効にするキーマップ。nilだと何も設定しない。
+;; keymap  : このパースペクティブで有効にするキーマップのシンボル。nilだと何も設定しない。
 
-(defstruct ewm:$pst name wm main start update switch popup leave keymap)
+(defstruct ewm:$pst-class name title init main start update switch popup leave keymap)
+
+(defun ewm:pst-class-register (name pst-class)
+  ;;パースペクティブクラスの登録
+  (setq ewm:pst-alist
+        (cons (cons name pst-class)
+              ewm:pst-alist)))
+
+(defun ewm:pst-class-get (name)
+  ;;パースペクティブクラスの取得
+  (cdr (assq name ewm:pst-alist)))
+
+;;ewm:$pst(perspective) インスタンス構造体
+;; name    : このパースペクティブの名前、シンボル
+;; wm      : wlfレイアウトオブジェクト
+;; type    : class オブジェクトへの参照
+
+(defstruct ewm:$pst name wm type)
+
+(defun ewm:$pst-title (pst)
+  (ewm:$pst-class-title (ewm:$pst-type pst)))
+(defun ewm:$pst-main (pst)
+  (ewm:$pst-class-main (ewm:$pst-type pst)))
+(defun ewm:$pst-start (pst)
+  (ewm:$pst-class-start (ewm:$pst-type pst)))
+(defun ewm:$pst-update (pst)
+  (ewm:$pst-class-update (ewm:$pst-type pst)))
+(defun ewm:$pst-switch (pst)
+  (ewm:$pst-class-switch (ewm:$pst-type pst)))
+(defun ewm:$pst-popup (pst)
+  (ewm:$pst-class-popup (ewm:$pst-type pst)))
+(defun ewm:$pst-leave (pst)
+  (ewm:$pst-class-leave (ewm:$pst-type pst)))
+(defun ewm:$pst-keymap (pst)
+  (ewm:aif (ewm:$pst-class-keymap (ewm:$pst-type pst))
+      (symbol-value it) nil))
 
 (defun ewm:pst-get-instance ()
   (ewm:frame-param-get 'ewm:pst))
@@ -585,13 +614,7 @@ from the given string."
     (make-ewm:$pst
      :name   (ewm:$pst-name   i)
      :wm     (wlf:copy-windows (ewm:pst-get-wm))
-     :main   (ewm:$pst-main   i)
-     :start  (ewm:$pst-start  i)
-     :update (ewm:$pst-update i)
-     :switch (ewm:$pst-switch i)
-     :popup  (ewm:$pst-popup  i)
-     :leave  (ewm:$pst-leave  i)
-     :keymap (ewm:$pst-keymap i))))
+     :type   (ewm:$pst-type   i))))
 
 (defun ewm:pst-get-wm ()
   (ewm:$pst-wm (ewm:pst-get-instance)))
@@ -633,10 +656,10 @@ from the given string."
   ;;パースペクティブを変更する
   ;;前のパースペクティブの終了処理と、新しい方の開始処理など
   (let ((prev-pst-instance (ewm:pst-get-instance))
-        (next-pst (cdr (assq next-pst-name ewm:pst-alist)))
+        (next-pst-class (ewm:pst-class-get next-pst-name))
         (prev-selected-buffer (current-buffer)))
     (cond
-     ((null next-pst)
+     ((null next-pst-name)
       (error "Perspective [%s] is not found." next-pst-name))
      (t
       (ewm:aif prev-pst-instance
@@ -644,7 +667,8 @@ from the given string."
             (funcall (ewm:$pst-leave it) (ewm:$pst-wm it))
             (unless (eql next-pst-name (ewm:$pst-name it))
               (ewm:pst-set-prev-pst (ewm:$pst-name it)))))
-      (let ((next-pst-instance (funcall next-pst)))
+      (let ((next-pst-instance
+             (funcall (ewm:$pst-class-init next-pst-class))))
         (ewm:pst-set-instance next-pst-instance)
         (ewm:pst-change-keymap (ewm:$pst-keymap next-pst-instance))
         (ewm:aif (ewm:$pst-start next-pst-instance)
@@ -746,7 +770,7 @@ from the given string."
 ;;; Commands / Key bindings / Minor Mode
 ;;;--------------------------------------------------
 
-(defun ewm:pst-chage-command ()
+(defun ewm:pst-change-command ()
   (interactive)
   (let* ((pst-list (mapcar (lambda (i) (symbol-name (car i))) ewm:pst-alist))
          (pst-name (completing-read "Chagne parspective: " pst-list)))
@@ -781,10 +805,10 @@ from the given string."
 (defvar ewm:pst-minor-mode-keymap
       (ewm:define-keymap
        '(("prefix Q"   . ewm:stop-management)
-         ("prefix L"   . ewm:pst-update-windows-command)
-         ("prefix n"     . ewm:pst-history-forward-command)
-         ("prefix p"     . ewm:pst-history-back-command)
-         ("prefix P"   . ewm:pst-change-prev-pst-command)
+         ("prefix l"   . ewm:pst-update-windows-command)
+         ("prefix n"   . ewm:pst-history-forward-command)
+         ("prefix p"   . ewm:pst-history-back-command)
+         ("prefix <DEL>" . ewm:pst-change-prev-pst-command)
          ) ewm:prefix-key))
 
 (defvar ewm:pst-minor-mode-hook nil)
@@ -818,25 +842,37 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Framework
 
-(defvar ewm:plugin-alist nil "[internal] Plugin registory.")
-(setq ewm:plugin-alist nil)
+;; ewm:$plugin構造体
+;; name   : プラグインの symbol 
+;; title  : 人が読む用のプラグインの名前
+;; update : プラグイン本体の関数
+(defstruct ewm:$plugin name title update)
 
-(defun ewm:plugin-register (name update-function)
+(defvar ewm:plugin-list nil "[internal] Plugin registory.")
+(setq ewm:plugin-list nil)
+
+(defun ewm:plugin-register (name title update-function)
   ;;プラグインの登録
-  (setq ewm:plugin-alist
-        (cons (cons name update-function)
-              ewm:plugin-alist)))
+  (push (make-ewm:$plugin
+         :name name
+         :title title
+         :update update-function)
+        ewm:plugin-list))
 
 (defun ewm:plugin-delete (name)
   ;;プラグインの登録削除
-  (setq ewm:plugin-alist
-        (assq-delete-all name ewm:plugin-alist)))
+  (setq ewm:plugin-list 
+        (delete-if (lambda (i) (eq (ewm:$plugin-name i) name))
+                   ewm:plugin-list)))
 
 (defun ewm:plugin-get (name)
   ;;プラグインを名前から取ってくる
+  ;;プラグイン構造体が帰ってくる
   (if name 
-      (ewm:aif (assq name ewm:plugin-alist)
-          (cdr it)
+      (ewm:aif (find-if (lambda (i) 
+                          (eq (ewm:$plugin-name i) name)) 
+                        ewm:plugin-list)
+          it
         (ewm:message "Plugin not found [%s]." name) nil)))
 
 (defun ewm:plugin-exec-update (frame wm)
@@ -847,7 +883,7 @@ from the given string."
         if (and (wlf:window-live-window winfo) plugin)
         do 
         (condition-case err
-            (funcall plugin frame wm winfo)
+            (funcall (ewm:$plugin-update plugin) frame wm winfo)
           (nil (ewm:message "Plugin Error %s [%s]" plugin-name err)))))
 
 (defun ewm:plugin-switch (plugin-name)
@@ -869,9 +905,10 @@ from the given string."
          (cplg (or (if wname 
                        (ewm:pst-window-plugin-get wm wname)) 
                    "No plugin"))
-         (plg-list (mapcar (lambda (i) 
-                             (symbol-name (car i))) 
-                           ewm:plugin-alist))
+         (plg-list (mapcar 
+                    (lambda (i) (symbol-name (ewm:$plugin-name i)))
+                    ewm:plugin-list))
+         (completion-ignore-case t)
          (plg-name (completing-read
                     (format "Chagne plugin [current: %s] -> : " cplg)
                     plg-list)))
@@ -892,30 +929,56 @@ from the given string."
 
 (defvar ewm:pst-minor-mode-menu-spec nil)
 
+(defun ewm:menu-pst-selected-p (name)
+  ;;現在のパースペクティブがnameかどうか
+  (eq name (ewm:$pst-name (ewm:pst-get-instance))))
+
+(defun ewm:menu-plugin-selected-p (name)
+  ;;現在のウインドウのプラグインがnameかどうか
+  (let* ((wm (ewm:pst-get-wm))
+         (wname (wlf:get-window-name wm (selected-window))))
+    (when wname
+      (eq name (ewm:pst-window-plugin-get wm wname)))))
+
+(defun ewm:menu-plugin-working-p ()
+  ;;現在のウインドウにプラグインがあるかどうか
+  (let* ((wm (ewm:pst-get-wm))
+         (wname (wlf:get-window-name wm (selected-window))))
+    (ewm:pst-window-plugin-get wm wname)))
+
 (defun ewm:menu-define ()
   (let (perspectives plugins)
     (setq perspectives
           (loop for i in ewm:pst-alist
+                for pst = (cdr i)
                 for n = (car i)
                 collect 
-                (vector (symbol-name n) `(lambda () (interactive) (ewm:pst-change ',n)) t)))
+                (vector (ewm:$pst-class-title pst) 
+                        `(lambda () (interactive) (ewm:pst-change ',n)) 
+                        :selected `(ewm:menu-pst-selected-p ',n)
+                        :style 'toggle)))
     (setq plugins
-          (loop for i in ewm:plugin-alist
-                for n = (car i)
+          (loop for i in ewm:plugin-list
+                for n = (ewm:$plugin-name i)
                 collect 
-                (vector (symbol-name n) `(lambda () (interactive) (ewm:plugin-switch ',n)) t)))
+                (vector (ewm:$plugin-title i)
+                        `(lambda () (interactive) (ewm:plugin-switch ',n))
+                        :selected `(ewm:menu-plugin-selected-p ',n)
+                        :style 'toggle)))
 
     (setq ewm:pst-minor-mode-menu-spec 
           `("EWM"
-            ["History forward" ewm:pst-history-forward-command t]
-            ["History back"    ewm:pst-history-back-command t]
-            ["Update windows"  ewm:pst-update-windows-command t]
+            ["History Forward" ewm:pst-history-forward-command t]
+            ["History Back"    ewm:pst-history-back-command t]
+            ["Update Windows"  ewm:pst-update-windows-command t]
             "----"
             ["Quit EWM"  ewm:stop-management t]
             "----"
-            "Perspectives" ,@perspectives
+            "Perspectives" ,@(nreverse perspectives)
             "----"
-            "Plugins" ,@plugins
+            "Plugins" ,@(nreverse plugins)
+            ["Remove Current Plugin" ewm:plugin-remove-command
+             (ewm:menu-plugin-working-p)]
             ))
     (easy-menu-define ewm-menu-map
       ewm:pst-minor-mode-keymap "EWM menu map" 
@@ -980,7 +1043,7 @@ from the given string."
      ("j" . next-line)
      ("<SPC>" . ewm:def-plugin-history-list-show-command)
      ("C-m"   . ewm:def-plugin-history-list-select-command)
-     ("q"     . ewm:pst-window-select-main)
+     ("q"     . ewm:pst-window-select-main-command)
      )))
 
 (define-derived-mode ewm:def-plugin-history-list-mode fundamental-mode "History")
@@ -1011,7 +1074,9 @@ from the given string."
       (ewm:history-add buf)
       (ewm:pst-show-history-main))))
 
-(ewm:plugin-register 'history-list 'ewm:def-plugin-history-list)
+(ewm:plugin-register 'history-list 
+                     "History List"
+                     'ewm:def-plugin-history-list)
 
 ;;; dir-files / メインバッファの位置のファイル一覧
 ;;;--------------------------------------------------
@@ -1027,7 +1092,9 @@ from the given string."
     (with-current-buffer dbuf (revert-buffer))
     (wlf:set-buffer wm (wlf:window-name winfo) dbuf)))
 
-(ewm:plugin-register 'dir-files 'ewm:def-plugin-dir-files)
+(ewm:plugin-register 'dir-files 
+                     "Dired"
+                     'ewm:def-plugin-dir-files)
 
 ;;; imenu / Imenuで概要参照
 ;;;--------------------------------------------------
@@ -1132,7 +1199,7 @@ from the given string."
    '(("C-m" . ewm:def-plugin-imenu-jump-command)
      ("j" . next-line)
      ("k" . previous-line)
-     ("q" . ewm:pst-window-select-main)
+     ("q" . ewm:pst-window-select-main-command)
      ("<SPC>" . ewm:def-plugin-imenu-show-command)
      )))
 
@@ -1209,7 +1276,9 @@ from the given string."
        ;;can not update
        )))))
 
-(ewm:plugin-register 'imenu 'ewm:def-plugin-imenu)
+(ewm:plugin-register 'imenu
+                     "Outline"
+                     'ewm:def-plugin-imenu)
 
 ;;; top / topでマシン状態表示
 ;;;--------------------------------------------------
@@ -1266,7 +1335,9 @@ from the given string."
                     (kill-buffer tmpbuf))))))
     buf))
 
-(ewm:plugin-register 'top 'ewm:def-plugin-top)
+(ewm:plugin-register 'top 
+                     "Top (System Stat)"
+                     'ewm:def-plugin-top)
 
 ;;; history-nth / 履歴のN番目を表示
 ;;;--------------------------------------------------
@@ -1282,7 +1353,9 @@ from the given string."
     (when buf
       (wlf:set-buffer wm (wlf:window-name winfo) buf))))
 
-(ewm:plugin-register 'history-nth 'ewm:def-plugin-history-nth)
+(ewm:plugin-register 'history-nth 
+                     "History Back Buffer"
+                     'ewm:def-plugin-history-nth)
 
 ;;; main-prev / ひとつ前にメインに表示していたバッファを表示
 ;;;--------------------------------------------------
@@ -1296,7 +1369,9 @@ from the given string."
     (when buf
       (wlf:set-buffer wm (wlf:window-name winfo) buf))))
 
-(ewm:plugin-register 'main-prev 'ewm:def-plugin-main-prev)
+(ewm:plugin-register 'main-prev 
+                     "Previous Buffer"
+                     'ewm:def-plugin-main-prev)
 
 ;;; clock / 時計
 ;;;--------------------------------------------------
@@ -1441,7 +1516,9 @@ from the given string."
         (cons (format-time-string "%H:%M" time) 'ewm:face-title)))
     )))
 
-(ewm:plugin-register 'clock 'ewm:def-plugin-clock)
+(ewm:plugin-register 'clock 
+                     "Fancy Clock"
+                     'ewm:def-plugin-clock)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
@@ -1450,28 +1527,41 @@ from the given string."
 ;;;--------------------------------------------------
 
 (defvar ewm:c-code-recipe
-      '(| (:left-max-size 40)
-        (- (:upper-size-ratio 0.7)
-           files history)
-        (- (:upper-size-ratio 0.7)
-           (| (:right-max-size 30)
-              main imenu)
-           sub)))
+  '(| (:left-max-size 35)
+      (- (:upper-size-ratio 0.7)
+         files history)
+      (- (:upper-size-ratio 0.7)
+         (| (:right-max-size 30)
+            main imenu)
+         sub)))
 
 (defvar ewm:c-code-winfo
-      '((:name main)
-        (:name files :plugin dir-files)
-        (:name history :plugin history-list)
-        (:name sub :buffer "*info*" :default-hide t)
-        (:name imenu :plugin imenu :default-hide nil))
-      )
+  '((:name main)
+    (:name files :plugin dir-files)
+    (:name history :plugin history-list)
+    (:name sub :buffer "*info*" :default-hide t)
+    (:name imenu :plugin imenu :default-hide nil))
+  )
 
 (defvar ewm:c-code-show-main-regexp
    "\\*\\(vc-diff\\)\\*")
 
-(ewm:pst-register 'code 'ewm:dp-code-setup)
+(defvar ewm:dp-code-class
+  (make-ewm:$pst-class
+   :name   'code
+   :title  "Coding"
+   :init   'ewm:dp-code-init
+   :main   'main
+   :start  'ewm:dp-code-start
+   :update 'ewm:dp-code-update
+   :switch 'ewm:dp-code-switch
+   :popup  'ewm:dp-code-popup
+   :leave  'ewm:dp-code-leave
+   :keymap 'ewm:dp-code-minor-mode-map))
 
-(defun ewm:dp-code-setup ()
+(ewm:pst-class-register 'code ewm:dp-code-class)
+
+(defun ewm:dp-code-init ()
   (let* 
       ((code-wm 
         (wlf:no-layout 
@@ -1481,13 +1571,7 @@ from the given string."
         (make-ewm:$pst
          :name   'code
          :wm      code-wm
-         :main   'main
-         :start  'ewm:dp-code-start
-         :update 'ewm:dp-code-update
-         :switch 'ewm:dp-code-switch
-         :popup  'ewm:dp-code-popup
-         :leave  'ewm:dp-code-leave
-         :keymap ewm:dp-code-minor-mode-map))
+         :type   ewm:dp-code-class))
        (buf (or prev-selected-buffer
                 (ewm:history-get-main-buffer))))
 
@@ -1617,7 +1701,20 @@ from the given string."
       (lambda (buf)
         (string-match "\\*\\(Help\\|info\\|w3m\\)\\*" buf)))
 
-(ewm:pst-register 'doc 'ewm:dp-doc-setup)
+(defvar ewm:dp-doc-class 
+  (make-ewm:$pst-class
+   :name   'doc
+   :init   'ewm:dp-doc-init
+   :title  "Document"
+   :main   'left
+   :start  'ewm:dp-doc-start
+   :update 'ewm:dp-doc-update
+   :switch 'ewm:dp-doc-switch
+   :popup  'ewm:dp-doc-popup
+   :leave  'ewm:dp-doc-leave
+   :keymap 'ewm:dp-doc-minor-mode-map))
+
+(ewm:pst-class-register 'doc ewm:dp-doc-class)
 
 (defun ewm:dp-doc-set-doc-buffer (buf)
   (ewm:frame-param-set 'ewm:dp-doc-buffer buf))
@@ -1625,7 +1722,7 @@ from the given string."
 (defun ewm:dp-doc-get-doc-buffer ()
   (ewm:frame-param-get 'ewm:dp-doc-buffer))
 
-(defun ewm:dp-doc-setup ()
+(defun ewm:dp-doc-init ()
   (let* 
       ((doc-wm 
         (wlf:no-layout 
@@ -1635,13 +1732,7 @@ from the given string."
         (make-ewm:$pst
          :name   'doc
          :wm      doc-wm
-         :main   'left
-         :start  'ewm:dp-doc-start
-         :update 'ewm:dp-doc-update
-         :switch 'ewm:dp-doc-switch
-         :popup  'ewm:dp-doc-popup
-         :leave  'ewm:dp-doc-leave
-         :keymap ewm:dp-doc-minor-mode-map))
+         :type    ewm:dp-doc-class))
        (buf (ewm:dp-doc-get-doc-buffer)))
 
     (unless (and buf (buffer-live-p buf))
@@ -1657,7 +1748,7 @@ from the given string."
   )
 
 (defun ewm:dp-doc-update (wm)
-  (ewm:message "#DP DOC update / %s" (ewm:debug-windows wm))
+  (ewm:message "#DP DOC update")
   ;;左右を同じにする
   (let ((leftbuf  (wlf:get-buffer wm 'left))
         (rightbuf (wlf:get-buffer wm 'right)))
@@ -1761,9 +1852,22 @@ from the given string."
 
 (defvar ewm:c-two-show-side-regexp "\\*\\(Help\\|info\\|w3m\\)\\*")
 
-(ewm:pst-register 'two 'ewm:dp-two-setup)
+(defvar ewm:dp-two-class 
+  (make-ewm:$pst-class
+   :name   'two
+   :title  "Two Columns"
+   :init   'ewm:dp-two-init
+   :main   'left
+   :start  'ewm:dp-two-start
+   :update 'ewm:dp-two-update
+   :switch 'ewm:dp-two-switch
+   :popup  'ewm:dp-two-popup
+   :leave  'ewm:dp-two-leave
+   :keymap 'ewm:dp-two-minor-mode-map))
 
-(defun ewm:dp-two-setup ()
+(ewm:pst-class-register 'two ewm:dp-two-class)
+
+(defun ewm:dp-two-init ()
   (let* 
       ((two-wm 
         (wlf:no-layout 
@@ -1773,13 +1877,7 @@ from the given string."
         (make-ewm:$pst
          :name   'two
          :wm      two-wm
-         :main   'left
-         :start  'ewm:dp-two-start
-         :update 'ewm:dp-two-update
-         :switch 'ewm:dp-two-switch
-         :popup  'ewm:dp-two-popup
-         :leave  'ewm:dp-two-leave
-         :keymap ewm:dp-two-minor-mode-map))
+         :type    ewm:dp-two-class))
        (buf (or prev-selected-buffer
                 (ewm:history-get-main-buffer))))
 
@@ -1791,11 +1889,11 @@ from the given string."
     pst))
 
 (defun ewm:dp-two-start (wm)
-)
+  )
 
 (defun ewm:dp-two-update (wm)
   (ewm:message "#DP TWO update ")
-)
+  )
 
 (defun ewm:dp-two-switch (buf)
   (ewm:message "#DP TWO switch : %s" buf)
@@ -1841,7 +1939,7 @@ from the given string."
      (wlf:set-buffer wm 'sub buf))))
 
 (defun ewm:dp-two-leave (wm)
-)
+  )
 
 ;; Commands / Keybindings
 
@@ -1899,21 +1997,19 @@ from the given string."
 (defvar ewm:c-array-max-rows 4)  ; 並べる横最大数
 (defvar ewm:c-array-max-cols 5)  ; 並べる縦最大数
 
-(setq ewm:c-dp-array-more-buffers-func 
-      (lambda (b)
-               (let ((bn (buffer-name b)))
-                 (and 
-                  (not  ; 表示しないもの
-                   (memq (buffer-local-value 'major-mode b)  
-                         '(dired-mode)))
-                  (or
-                   (not (string-match "^ ?\\*" bn)) ; 内部バッファは表示しないが、
-                   (string-match ; 以下のものは表示する
-                    "\\*\\(Help\\|info\\|scratch\\|w3m\\|Messages\\)\\*" 
-                    bn))))))
+(defvar ewm:c-array-more-buffers-pred
+  (lambda (b)
+    (let ((bn (buffer-name b)))
+      (and 
+       (not  ; 表示しないもの
+        (memq (buffer-local-value 'major-mode b)  
+              '(dired-mode)))
+       (or
+        (not (string-match "^ ?\\*" bn)) ; 内部バッファは表示しないが、
+        (string-match ; 以下のものは表示する
+         "\\*\\(Help\\|info\\|scratch\\|w3m\\|Messages\\)\\*" 
+         bn))))))
       
-(ewm:pst-register 'array 'ewm:dp-array-setup)
-
 (defun ewm:dp-array-make-recipe (cols rows)
   ;; cols x rows の recipe を作る
   (let* ((sz-summary 0.12)
@@ -2001,16 +2097,25 @@ from the given string."
     (ewm:dp-array-arrange-buffers wm buffers)
     wm))
 
-(defun ewm:dp-array-setup ()
+(defvar ewm:dp-array-class 
+    (make-ewm:$pst-class
+     :name   'array
+     :title  "Buffer Array"
+     :init   'ewm:dp-array-init
+     :start  'ewm:dp-array-start
+     :leave  'ewm:dp-array-leave
+     :keymap 'ewm:dp-array-minor-mode-map))
+
+(ewm:pst-class-register 'array ewm:dp-array-class)
+
+(defun ewm:dp-array-init ()
   (let* 
       ((array-wm (ewm:dp-array-make-wm 
                   (funcall ewm:dp-array-buffers-function))))
     (make-ewm:$pst
      :name  'array
      :wm     array-wm
-     :start 'ewm:dp-array-start
-     :leave 'ewm:dp-array-leave
-     :keymap ewm:dp-array-minor-mode-map)))
+     :type   ewm:dp-array-class)))
 
 (defun ewm:dp-array-start (wm)
   (ewm:message "#ARRAY START")
@@ -2028,7 +2133,8 @@ from the given string."
         (incf cnt))
   wm)
 
-(defvar ewm:dp-array-buffers-function 'ewm:dp-array-get-recordable-buffers)
+(defvar ewm:dp-array-buffers-function
+  'ewm:dp-array-get-recordable-buffers) ; この関数を切り替える
 
 (defun ewm:dp-array-get-recordable-buffers ()
   ;;履歴に記録しそうなもの一覧
@@ -2051,7 +2157,7 @@ from the given string."
           (copy-list (ewm:history-get-backup))
           )))
     (loop for b in (buffer-list)
-          if (and (funcall ewm:c-dp-array-more-buffers-func b)
+          if (and (funcall ewm:c-array-more-buffers-pred b)
                   (not (member b ret)))
           do (push b ret))
     (nreverse ret)))
