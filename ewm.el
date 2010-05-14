@@ -76,6 +76,7 @@
 ;; アドバイス（switch-to-buffer, pop-to-bufferなど）
 ;; パースペクティブフレームワーク / ewm:pst-
 ;; プラグインフレームワーク / ewm:plugin-
+;; メニュー / ewm:menu-
 ;; プラグイン定義 / ewm:def-plugin-
 ;; パースペクティブ定義 / ewm:dp-
 ;;   code  / ewm:dp-code-
@@ -410,11 +411,10 @@ from the given string."
        (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
     (if overrided
         (progn (set-buffer buf) (get-buffer-window buf))
-      (let (special-display-function)
-        (ewm:message "#DISPLAY-BUFFER ") ;;無限ループになる(TODO)
-        (set-window-buffer (selected-window) buf) ; fixme!!
-        ;(apply 'display-buffer buf args))))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
-        ))))
+      (ewm:message "#DISPLAY-BUFFER ") ;;適当な場所に表示する
+      (set-window-buffer (selected-window) buf)
+      (set-buffer buf) (selected-window) 
+      )))
 
 (defun ewm:kill-buffer-hook ()
   (ewm:message "#KILL HOOK %s" (current-buffer))
@@ -640,8 +640,10 @@ from the given string."
   (ewm:with-advice
    (let* ((instance (ewm:pst-get-instance))
           (wm (ewm:$pst-wm instance)))
+     ;;(ewm:debug-windows (ewm:pst-get-wm))
      (when (or rebuild-windows 
-               (wlf:wset-live-p wm 1))
+               (not (wlf:wset-live-p wm 1)))
+       (ewm:message "  #PST-UPDATE > REBUILD")
        (wlf:refresh wm)
        (ewm:aif (ewm:$pst-main instance)
            (wlf:select wm it)))
