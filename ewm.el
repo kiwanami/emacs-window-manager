@@ -83,6 +83,7 @@
 ;;   code  / ewm:dp-code-
 ;;   doc   / ewm:dp-doc-
 ;;   two   / ewm:dp-two-
+;;   dashboard / ewm:dp-dashboard-
 ;;   array / ewm:dp-array-
 ;; 全体制御
 
@@ -213,6 +214,7 @@ from the given string."
   :group 'ewm)
 
 (defun ewm:rt (text face)
+  (unless (stringp text) (setq text (format "%s" text)))
   (put-text-property 0 (length text) 'face face text) text)
 
 (defun ewm:rt-format (text &rest args)
@@ -244,6 +246,18 @@ from the given string."
     `(let ((,sym (,method ,object)))
        (if ,sym
            (funcall ,sym ,@args)))))
+
+(defmacro ewm:not-minibuffer (&rest body)
+  `(when (= 0 (minibuffer-depth))
+     ,@body))
+
+(defun ewm:format-byte-unit (size)
+  (cond ((> size (* 1048576 4))
+         (format "%i Mb" (round (/ size 1048576))))
+        ((> size (* 1024 4))
+         (format "%i Kb" (round (/ size 1024))))
+        (t
+         (format "%i bytes" size))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
@@ -1395,8 +1409,8 @@ from the given string."
               (if (equal event "finished\n")
                   (with-current-buffer buf
                     (erase-buffer)
-                    (goto-char (point-min))
                     (insert-buffer-substring tmpbuf)
+                    (goto-char (point-min))
                     (kill-buffer tmpbuf))))))
     buf))
 
@@ -1729,145 +1743,6 @@ from the given string."
          ("prefix M" . ewm:dp-code-main-maximize-toggle-command))
        ewm:prefix-key))
 
-;;; document / Document view perspective
-;;;--------------------------------------------------
-
-(defvar ewm:c-doc-recipe
-      '(- (:upper-size-ratio 0.75)
-        (| left right)
-        sub))
-
-(defvar ewm:c-doc-winfo
-      '((:name left)
-        (:name right)
-        (:name sub :default-hide t)))
-
-(setq ewm:c-doc-show-main-func
-      (lambda (buf)
-        (string-match "\\*\\(Help\\|info\\|w3m\\)\\*" buf)))
-
-(ewm:pst-class-register 
-  (make-ewm:$pst-class
-   :name   'doc
-   :init   'ewm:dp-doc-init
-   :title  "Document"
-   :main   'left
-   :update 'ewm:dp-doc-update
-   :switch 'ewm:dp-doc-switch
-   :popup  'ewm:dp-doc-popup
-   :leave  'ewm:dp-doc-leave
-   :keymap 'ewm:dp-doc-minor-mode-map))
-
-(defun ewm:dp-doc-set-doc-buffer (buf)
-  (ewm:frame-param-set 'ewm:dp-doc-buffer buf))
-
-(defun ewm:dp-doc-get-doc-buffer ()
-  (ewm:frame-param-get 'ewm:dp-doc-buffer))
-
-(defun ewm:dp-doc-init ()
-  (let* 
-      ((doc-wm 
-        (wlf:no-layout 
-         ewm:c-doc-recipe
-         ewm:c-doc-winfo))
-       (buf (ewm:dp-doc-get-doc-buffer)))
-
-    (unless (and buf (buffer-live-p buf))
-      (setq buf (or prev-selected-buffer
-                    (ewm:history-get-main-buffer))))
-    
-    (wlf:set-buffer doc-wm 'left buf)
-    (with-current-buffer buf
-      (follow-mode 1))
-    doc-wm))
-
-(defun ewm:dp-doc-update (wm)
-  (ewm:message "#DP DOC update")
-  ;;左右を同じにする
-  (let ((leftbuf  (wlf:get-buffer wm 'left))
-        (rightbuf (wlf:get-buffer wm 'right)))
-    (unless (eql leftbuf rightbuf)
-        (with-current-buffer leftbuf
-          (follow-mode 1))
-        (wlf:set-buffer wm 'right leftbuf))))
-
-(defun ewm:dp-doc-set-main-buffer (buf)
-  (let ((wm (ewm:pst-get-wm)))
-    (with-current-buffer buf
-      (follow-mode 1))
-    (wlf:set-buffer wm 'left buf)
-    (wlf:set-buffer wm 'right buf)))
-
-(defun ewm:dp-doc-switch (buf)
-  ;;left,rightでswitch-to-bufferが起きたら、乗っ取って両方に表示する。
-  (ewm:message "#DP DOC switch : %s" buf)
-  (let ((wm (ewm:pst-get-wm))
-        (curwin (selected-window)))
-    (if (or (eql curwin (wlf:get-window wm 'left))
-            (eql curwin (wlf:get-window wm 'right)))
-        (progn 
-          (ewm:dp-doc-set-main-buffer buf)
-          t)
-      nil)))
-
-(defun ewm:dp-doc-popup (buf)
-  (ewm:message "#DP DOC popup : %s" buf)
-  (let ((buf-name (buffer-name buf)))
-    (cond
-     ((or (funcall ewm:c-doc-show-main-func buf-name)
-          (ewm:history-recordable-p buf))
-      (ewm:dp-doc-set-main-buffer buf)
-      t)
-     (t
-      (ewm:dp-doc-popup-sub buf)
-      t))))
-
-(defun ewm:dp-doc-popup-sub (buf)
-  (let ((wm (ewm:pst-get-wm)))
-    (ewm:with-advice
-     (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf))))
-
-(defun ewm:dp-doc-leave (wm)
-  (let ((buf (get-buffer (wlf:get-buffer wm 'left))))
-    (when (and buf (buffer-live-p buf))
-      (unless (ewm:history-recordable-p buf) ; ドキュメント的バッファだったら
-        (ewm:dp-doc-set-doc-buffer buf)      ; あとで再表示できるようにして、
-        (setq prev-selected-buffer nil))))   ; 次のパースペクティブは履歴から持ってきてもらう
-  (loop for b in (buffer-list)
-        do (with-current-buffer b
-             (follow-mode -1))))
-
-;; Commands / Keybindings
-
-(defun ewm:dp-doc ()
-  (interactive)
-  (ewm:pst-change 'doc))
-
-(defun ewm:dp-doc-navi-main-command ()
-  (interactive)
-  (wlf:select (ewm:pst-get-wm) 'left))
-(defun ewm:dp-doc-navi-sub-command ()
-  (interactive)
-  (wlf:select (ewm:pst-get-wm) 'sub))
-(defun ewm:dp-doc-sub-toggle-command ()
-  (interactive)
-  (wlf:toggle (ewm:pst-get-wm) 'sub)
-  (ewm:pst-update-windows))
-(defun ewm:dp-doc-main-maximize-toggle-command ()
-  (interactive)
-  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
-  (ewm:pst-update-windows))
-
-(defvar ewm:dp-doc-minor-mode-map 
-      (ewm:define-keymap
-       '(("prefix m" . ewm:dp-doc-navi-main-command)
-         ("prefix s" . ewm:dp-doc-navi-sub-command)
-         ("prefix S" . ewm:dp-doc-sub-toggle-command)
-         ("prefix M" . ewm:dp-doc-main-maximize-toggle-command)
-         ("prefix I" . info))
-       ewm:prefix-key))
-
 ;;; two / Two column editing perspective
 ;;;--------------------------------------------------
 
@@ -1993,6 +1868,7 @@ from the given string."
   (ewm:pst-update-windows))
 
 (defvar ewm:dp-two-minor-mode-map 
+
       (ewm:define-keymap
        '(("prefix d" . ewm:dp-two-double-column-command)
          ("prefix S" . ewm:dp-two-sub-toggle-command)
@@ -2000,9 +1876,263 @@ from the given string."
          ("prefix M" . ewm:dp-two-main-maximize-toggle-command))
        ewm:prefix-key))
 
+;;; document / Document view perspective
+;;;--------------------------------------------------
+
+(defvar ewm:c-doc-recipe
+      '(- (:upper-size-ratio 0.75)
+        (| left right)
+        sub))
+
+(defvar ewm:c-doc-winfo
+      '((:name left)
+        (:name right)
+        (:name sub :default-hide t)))
+
+(setq ewm:c-doc-show-main-func
+      (lambda (buf)
+        (string-match "\\*\\(Help\\|info\\|w3m\\)\\*" buf)))
+
+(ewm:pst-class-register 
+  (make-ewm:$pst-class
+   :name   'doc
+   :init   'ewm:dp-doc-init
+   :title  "Document"
+   :main   'left
+   :update 'ewm:dp-doc-update
+   :switch 'ewm:dp-doc-switch
+   :popup  'ewm:dp-doc-popup
+   :leave  'ewm:dp-doc-leave
+   :keymap 'ewm:dp-doc-minor-mode-map))
+
+(defun ewm:dp-doc-set-doc-buffer (buf)
+  (ewm:frame-param-set 'ewm:dp-doc-buffer buf))
+
+(defun ewm:dp-doc-get-doc-buffer ()
+  (ewm:frame-param-get 'ewm:dp-doc-buffer))
+
+(defun ewm:dp-doc-init ()
+  (let* 
+      ((doc-wm 
+        (wlf:no-layout 
+         ewm:c-doc-recipe
+         ewm:c-doc-winfo))
+       (buf (ewm:dp-doc-get-doc-buffer)))
+
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (or prev-selected-buffer
+                    (ewm:history-get-main-buffer))))
+    
+    (wlf:set-buffer doc-wm 'left buf)
+    (with-current-buffer buf
+      (follow-mode 1))
+    doc-wm))
+
+(defun ewm:dp-doc-update (wm)
+  (ewm:message "#DP DOC update")
+  ;;左右を同じにする
+  (let ((leftbuf  (wlf:get-buffer wm 'left))
+        (rightbuf (wlf:get-buffer wm 'right)))
+    (unless (eql leftbuf rightbuf)
+        (with-current-buffer leftbuf
+          (follow-mode 1))
+        (wlf:set-buffer wm 'right leftbuf))))
+
+(defun ewm:dp-doc-set-main-buffer (buf)
+  (let ((wm (ewm:pst-get-wm)))
+    (with-current-buffer buf
+      (follow-mode 1))
+    (wlf:set-buffer wm 'left buf)
+    (wlf:set-buffer wm 'right buf)))
+
+(defun ewm:dp-doc-switch (buf)
+  ;;left,rightでswitch-to-bufferが起きたら、乗っ取って両方に表示する。
+  (ewm:message "#DP DOC switch : %s" buf)
+  (let ((wm (ewm:pst-get-wm))
+        (curwin (selected-window)))
+    (if (or (eql curwin (wlf:get-window wm 'left))
+            (eql curwin (wlf:get-window wm 'right)))
+        (progn 
+          (ewm:dp-doc-set-main-buffer buf)
+          t)
+      nil)))
+
+(defun ewm:dp-doc-popup (buf)
+  (ewm:message "#DP DOC popup : %s" buf)
+  (let ((buf-name (buffer-name buf)))
+    (cond
+     ((or (funcall ewm:c-doc-show-main-func buf-name)
+          (ewm:history-recordable-p buf))
+      (ewm:dp-doc-set-main-buffer buf)
+      t)
+     (t
+      (ewm:dp-doc-popup-sub buf)
+      t))))
+
+(defun ewm:dp-doc-popup-sub (buf)
+  (let ((wm (ewm:pst-get-wm)))
+    (ewm:with-advice
+     (wlf:show wm 'sub)
+     (wlf:set-buffer wm 'sub buf))))
+
+(defun ewm:dp-doc-leave (wm)
+  (let ((buf (get-buffer (wlf:get-buffer wm 'left))))
+    (when (and buf (buffer-live-p buf))
+      (unless (ewm:history-recordable-p buf) ; ドキュメント的バッファだったら
+        (ewm:dp-doc-set-doc-buffer buf)      ; あとで再表示できるようにして、
+        (setq prev-selected-buffer nil))))   ; 次のパースペクティブは履歴から持ってきてもらう
+  (loop for b in (buffer-list)
+        do (with-current-buffer b
+             (when follow-mode
+               (follow-mode -1)))))
+
+;; Commands / Keybindings
+
+(defun ewm:dp-doc ()
+  (interactive)
+  (ewm:pst-change 'doc))
+
+(defun ewm:dp-doc-navi-main-command ()
+  (interactive)
+  (wlf:select (ewm:pst-get-wm) 'left))
+(defun ewm:dp-doc-navi-sub-command ()
+  (interactive)
+  (wlf:select (ewm:pst-get-wm) 'sub))
+(defun ewm:dp-doc-sub-toggle-command ()
+  (interactive)
+  (wlf:toggle (ewm:pst-get-wm) 'sub)
+  (ewm:pst-update-windows))
+(defun ewm:dp-doc-main-maximize-toggle-command ()
+  (interactive)
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
+  (ewm:pst-update-windows))
+
+(defvar ewm:dp-doc-minor-mode-map 
+      (ewm:define-keymap
+       '(("prefix m" . ewm:dp-doc-navi-main-command)
+         ("prefix s" . ewm:dp-doc-navi-sub-command)
+         ("prefix S" . ewm:dp-doc-sub-toggle-command)
+         ("prefix M" . ewm:dp-doc-main-maximize-toggle-command)
+         ("prefix I" . info))
+       ewm:prefix-key))
+
+;;; repository / Repository management perspective
+;;;--------------------------------------------------
+;; TODO
+
+
 ;;; dashboard / dashboard buffers perspective
 ;;;--------------------------------------------------
 
+(defvar ewm:c-dashboard-plugins '(clock top))
+
+(ewm:pst-class-register
+ (make-ewm:$pst-class
+     :name   'dashboard
+     :title  "Dashboard"
+     :main   'w-1-1
+     :init   'ewm:dp-dashboard-init
+     :start  'ewm:dp-dashboard-start))
+
+(defun ewm:dp-dashboard-init ()
+  (let* ((size (ewm:dp-array-calculate-size
+                (length ewm:c-dashboard-plugins)))
+         (w (car size)) (h (cdr size))
+         (recipe (ewm:dp-array-make-recipe w h))
+         (wparams (ewm:dp-array-make-winfo w h))
+         (wm (wlf:no-layout recipe wparams)))
+    (ewm:dp-dashboard-arrange-plugins wm)
+    wm))
+
+(defun ewm:dp-dashboard-arrange-plugins (wm)
+  (loop for winfo in (wlf:wset-winfo-list wm)
+        with cnt = 0
+        for opt = (wlf:window-options winfo)
+        for plugin = (nth cnt ewm:c-dashboard-plugins)
+        do 
+        (cond
+         ((null plugin)
+          (plist-put opt ':buffer ewm:c-blank-buffer))
+         ((symbolp plugin)
+          (plist-put opt ':plugin plugin))
+         ((consp plugin)
+          (plist-put opt ':plugin (car plugin))
+          (nconc opts (cdr plugin)))
+         (t
+          (plist-put opt ':buffer ewm:c-blank-buffer)))
+        (incf cnt))
+  wm)
+
+(defun ewm:dp-dashboard-start (wm)
+  (ewm:dp-dashboard-update-summary))
+
+(defun ewm:dp-dashboard-update-summary ()
+  (let* ((bufname " *WM:EmacsStat*")
+         (buf (get-buffer bufname))
+         (wm (ewm:pst-get-wm)))
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (get-buffer-create bufname))
+      (with-current-buffer buf
+        (setq buffer-read-only t)
+        (buffer-disable-undo buf)))
+    (with-current-buffer buf
+      (unwind-protect
+          (progn
+            (setq buffer-read-only nil)
+            (erase-buffer)
+            (goto-char (point-min))
+            (ewm:dp-dashboard-insert-summary-info))
+        (setq buffer-read-only t)))
+    (wlf:set-buffer wm 'summary buf)))
+
+(defun ewm:dp-dashboard-insert-summary-info ()
+  (multiple-value-bind
+      (conses syms miscs used-string-chars 
+              used-vector-slots floats intervals strings)
+      (garbage-collect)
+    (let* ((used-conses (car conses))
+           (free-conses (cdr conses))
+           (used-miscs (car miscs))
+           (free-miscs (cdr miscs))
+           (used-syms (car syms))
+           (free-syms (cdr syms))
+           (used-floats (car floats))
+           (free-floats (cdr floats))
+           (used-strings (car strings))
+           (free-strings (cdr strings))
+           (used-intervals (car intervals))
+           (free-intervals (cdr intervals))
+           (buf-num (length (buffer-list)))
+           (pure-mem (ewm:format-byte-unit pure-bytes-used))
+           (gccons (ewm:format-byte-unit gc-cons-threshold))
+           (mem-limit (ewm:format-byte-unit (* 1024 (memory-limit)))))
+      (flet
+          ((percent (used free)
+                    (let ((u (* 1.0 used)))
+                      (format "%.2f" (* 100.0 (/ u (+ u free)))))))
+        (insert 
+         (ewm:rt-format "Emacs stat:\n"))
+        (insert
+         (ewm:rt-format "  Conses: %s (%s%%) /  Syms: %s (%s%%) / Miscs: %s (%s%%) / String Chars %s\n"
+                        used-conses (percent used-conses free-conses)
+                        used-syms (percent used-syms free-syms)
+                        used-miscs (percent used-miscs free-miscs)
+                        used-string-chars))
+        (insert
+         (ewm:rt-format "  Floats: %s (%s%%) /  Strings: %s (%s%%) / Intervals: %s (%s%%) / Vectors %s\n"
+                        used-floats (percent used-floats free-floats)
+                        used-strings (percent used-strings free-strings)
+                        used-intervals (percent used-intervals free-intervals)
+                        used-vector-slots))
+         (insert
+          (ewm:rt-format "  Buffers: %s  /  Memory Limit: %s  /  Pure: %s"
+                         buf-num mem-limit pure-mem))))))
+
+;; Commands / Keybindings
+
+(defun ewm:dp-dashboard ()
+  (interactive)
+  (ewm:pst-change 'dashboard))
 
 ;;; array / arrange buffers perspective
 ;;;--------------------------------------------------
@@ -2115,10 +2245,11 @@ from the given string."
  (make-ewm:$pst-class
      :name   'array
      :title  "Buffer Array"
+     :main   'w-1-1
      :init   'ewm:dp-array-init
+     :popup  'ewm:dp-array-popup
      :start  'ewm:dp-array-start
-     :leave  'ewm:dp-array-leave
-     :keymap 'ewm:dp-array-minor-mode-map))
+     :leave  'ewm:dp-array-leave))
 
 (defun ewm:dp-array-init ()
   (let* 
@@ -2126,10 +2257,23 @@ from the given string."
                   (funcall ewm:dp-array-buffers-function))))
     array-wm))
 
+(defvar ewm:dp-array-backup-globalmap nil)
+
 (defun ewm:dp-array-start (wm)
   (ewm:message "#ARRAY START")
+  (setq ewm:dp-array-backup-globalmap global-map)
+  (use-global-map (make-keymap)) ; 強引
+  (setq overriding-terminal-local-map ewm:dp-array-minor-mode-map)
   (ewm:dp-array-decrease-fontsize)
   (ewm:dp-array-update-summary))
+
+(defun ewm:dp-array-leave (wm)
+  (ewm:message "#ARRAY LEAVE")
+  (use-global-map ewm:dp-array-backup-globalmap)
+  (setq overriding-terminal-local-map nil)
+  (when ewm:dp-array-overlay-focus
+    (delete-overlay ewm:dp-array-overlay-focus))
+  (ewm:dp-array-increase-fontsize))
 
 (defun ewm:dp-array-arrange-buffers (wm buffers)
   (loop for winfo in (wlf:wset-winfo-list wm)
@@ -2171,11 +2315,12 @@ from the given string."
           do (push b ret))
     (nreverse ret)))
 
-(defun ewm:dp-array-leave (wm)
-  (ewm:message "#ARRAY LEAVE")
-  (when ewm:dp-array-overlay-focus
-    (delete-overlay ewm:dp-array-overlay-focus))
-  (ewm:dp-array-increase-fontsize))
+(defun ewm:dp-array-popup (buf)
+  (ewm:message "#DP ARRAY popup : %s" buf)
+  (let ((wm (ewm:pst-get-wm)))
+    (ewm:with-advice
+     (wlf:set-buffer wm 'summary buf)))
+  t)
 
 (defun ewm:dp-array-decrease-fontsize ()
   (when (fboundp 'text-scale-decrease)
@@ -2225,13 +2370,7 @@ from the given string."
            (attr (file-attributes f))
            (modified-time (nth 5 attr))
            (size (nth 7 attr))
-           (strsize 
-            (cond ((> size (* 1048576 4))
-                   (format "%i Mb" (round (/ size 1048576))))
-                  ((> size (* 1024 4))
-                   (format "%i Kb" (round (/ size 1024))))
-                  (t
-                   (format "%i bytes" size)))))
+           (strsize (ewm:format-byte-unit size)))
       (insert
        (ewm:rt-format "File Name: %s  (Path: %s)\n"
                (cons  filename 'ewm:face-title) dir)
@@ -2266,67 +2405,77 @@ from the given string."
 
 (defun ewm:dp-array-move-left-command ()
   (interactive)
-  (windmove-left)
-  (ewm:dp-array-update-summary))
+  (ewm:not-minibuffer
+   (windmove-left)
+   (ewm:dp-array-update-summary)))
 (defun ewm:dp-array-move-right-command ()
   (interactive)
-  (windmove-right)
-  (ewm:dp-array-update-summary))
+  (ewm:not-minibuffer
+   (windmove-right)
+   (ewm:dp-array-update-summary)))
 (defun ewm:dp-array-move-up-command ()
   (interactive)
-  (windmove-up)
-  (ewm:dp-array-update-summary))
+  (ewm:not-minibuffer
+   (windmove-up)
+   (ewm:dp-array-update-summary)))
 (defun ewm:dp-array-move-down-command ()
   (interactive)
-  (let ((cwin (selected-window))
-        (bwin (wlf:get-window (ewm:pst-get-wm) 'summary)))
-    (windmove-down)
-    (when (eql (selected-window) bwin)
-      (select-window cwin)))
-  (ewm:dp-array-update-summary))
+  (ewm:not-minibuffer
+   (let ((cwin (selected-window))
+         (bwin (wlf:get-window (ewm:pst-get-wm) 'summary)))
+     (windmove-down)
+     (when (eql (selected-window) bwin)
+       (select-window cwin)))
+   (ewm:dp-array-update-summary)))
 (defun ewm:dp-array-goto-prev-pst-command ()
   (interactive)
-  (ewm:pst-change-prev))
+  (ewm:not-minibuffer
+   (ewm:pst-change-prev)))
 (defun ewm:dp-array-toggle-more-buffers-command ()
   (interactive)
-  (setq ewm:dp-array-buffers-function
-        (if (eq ewm:dp-array-buffers-function
-                'ewm:dp-array-get-recordable-buffers)
-            'ewm:dp-array-get-more-buffers
-          'ewm:dp-array-get-recordable-buffers))
-  (ewm:pst-change 'array))
+  (ewm:not-minibuffer
+   (setq ewm:dp-array-buffers-function
+         (if (eq ewm:dp-array-buffers-function
+                 'ewm:dp-array-get-recordable-buffers)
+             'ewm:dp-array-get-more-buffers
+           'ewm:dp-array-get-recordable-buffers))
+   (ewm:pst-change 'array)))
 (defun ewm:dp-array-cancel-command ()
   (interactive)
-  (wlf:select (ewm:pst-get-wm) 'w-1-1)
-  (ewm:pst-change-prev))
+  (ewm:not-minibuffer
+   (wlf:select (ewm:pst-get-wm) 'w-1-1)
+   (ewm:pst-change-prev)))
 
 (defvar ewm:dp-array-minor-mode-map 
-      (ewm:define-keymap
-       '(("<SPC>"  . ewm:dp-array-toggle-more-buffers-command)
-         ;;cursor
-         ([left]  . ewm:dp-array-move-left-command)
-         ([right] . ewm:dp-array-move-right-command)
-         ([up]    . ewm:dp-array-move-up-command)
-         ([down]  . ewm:dp-array-move-down-command)
-         ;;emacs
-         ("f"   . ewm:dp-array-move-left-command)
-         ("b"   . ewm:dp-array-move-right-command)
-         ("p"   . ewm:dp-array-move-up-command)
-         ("n"   . ewm:dp-array-move-down-command)
-         ("C-f" . ewm:dp-array-move-left-command)
-         ("C-b" . ewm:dp-array-move-right-command)
-         ("C-p" . ewm:dp-array-move-up-command)
-         ("C-n" . ewm:dp-array-move-down-command)
-         ;;vi
-         ("h"   . ewm:dp-array-move-left-command)
-         ("l"   . ewm:dp-array-move-right-command)
-         ("k"   . ewm:dp-array-move-up-command)
-         ("j"   . ewm:dp-array-move-down-command)
-         ;;choose
-         ("q"   . ewm:dp-array-cancel-command)
-         ("C-m" . ewm:dp-array-goto-prev-pst-command)
-         ("C-g" . ewm:dp-array-goto-prev-pst-command)
-         )))
+  (let ((keymap (make-keymap)))
+    (suppress-keymap keymap)
+    (ewm:add-keymap keymap
+   '(("<SPC>"  . ewm:dp-array-toggle-more-buffers-command)
+     ;;cursor
+     ([left]  . ewm:dp-array-move-left-command)
+     ([right] . ewm:dp-array-move-right-command)
+     ([up]    . ewm:dp-array-move-up-command)
+     ([down]  . ewm:dp-array-move-down-command)
+     ;;emacs
+     ("f"   . ewm:dp-array-move-left-command)
+     ("b"   . ewm:dp-array-move-right-command)
+     ("p"   . ewm:dp-array-move-up-command)
+     ("n"   . ewm:dp-array-move-down-command)
+     ("C-f" . ewm:dp-array-move-right-command)
+     ("C-b" . ewm:dp-array-move-left-command)
+     ("C-p" . ewm:dp-array-move-up-command)
+     ("C-n" . ewm:dp-array-move-down-command)
+     ;;vi
+     ("h"   . ewm:dp-array-move-left-command)
+     ("l"   . ewm:dp-array-move-right-command)
+     ("k"   . ewm:dp-array-move-up-command)
+     ("j"   . ewm:dp-array-move-down-command)
+     ;;choose
+     ("q"   . ewm:dp-array-cancel-command)
+     ("C-m" . ewm:dp-array-goto-prev-pst-command)
+     ("C-g" . ewm:dp-array-cancel-command)
+     ))
+    keymap))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Setup
@@ -2336,7 +2485,8 @@ from the given string."
  '(("prefix 1" . ewm:dp-code)
    ("prefix 2" . ewm:dp-two) 
    ("prefix 3" . ewm:dp-doc)
-   ("prefix 4" . ewm:dp-array))
+   ("prefix 4" . ewm:dp-array)
+   ("prefix 5" . ewm:dp-dashboard))
  ewm:prefix-key)
 
 (defvar ewm:save-window-configuration nil) ; backup
