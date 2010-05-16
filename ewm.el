@@ -75,6 +75,7 @@
 ;; 履歴管理 / ewm:history-
 ;; アドバイス（switch-to-buffer, pop-to-bufferなど）
 ;; パースペクティブフレームワーク / ewm:pst-
+;; パースペクティブセット / ewm:pstset-
 ;; プラグインフレームワーク / ewm:plugin-
 ;; メニュー / ewm:menu-
 ;; プラグイン定義 / ewm:def-plugin-
@@ -120,6 +121,10 @@
   `(let ((it ,test-form))
      (if it ,then-form ,@else-forms)))
 (put 'ewm:aif 'lisp-indent-function 2)
+
+(defmacro ewm:aand (test &rest rest)
+  `(let ((it ,test))
+     (if it ,(if rest (macroexpand-all `(ewm:aand ,@rest)) 'it))))
 
 (defun ewm:define-keymap (keymap-list &optional prefix)
   (let ((map (make-sparse-keymap)))
@@ -855,6 +860,47 @@ from the given string."
 (defun ewm:pst-minor-mode-abort ()
   ;;今のところ特になし
 )
+
+;;; Perspective Set
+;; 好みのパースペクティブのセットを作って選べるようにする
+
+(defun ewm:pstset-defaults()
+  ;;array以外を全部つっこむ
+  (ewm:pstset-define
+   (nreverse
+    (loop for i in ewm:pst-list
+          unless (eq (ewm:$pst-class-name i) 'array)
+          collect (ewm:$pst-class-name i)))))
+
+(defun ewm:pstset-define (names)
+  ;;引数：パースペクティブのシンボルのリスト
+  (loop for i in names
+        unless (ewm:pst-class-get i)
+        do (error "Perspective [%s] not found." i))
+  (ewm:frame-param-set 'ewm:pstset names))
+
+(defun ewm:pstset-get-current-pstset ()
+  (ewm:frame-param-get 'ewm:pstset))
+
+(defun ewm:pstset-next-pst-command ()
+  ;; 現在のセットで次のパースペクティブに切り替える
+  (interactive)
+  (ewm:aif (ewm:pst-get-instance)
+      (let* ((pset (ewm:pstset-get-current-pstset))
+             (now (ewm:$pst-name it))
+             (pos (position now pset)))
+        (ewm:aand pos (nth (1+ it) pset)
+                  (ewm:pst-change it)))))
+
+(defun ewm:pstset-prev-pst-command ()
+  ;; 現在のセットで前のパースペクティブに切り替える
+  (interactive)
+  (ewm:aif (ewm:pst-get-instance)
+      (let* ((pset (ewm:pstset-get-current-pstset))
+             (now (ewm:$pst-name it))
+             (pos (position now pset)))
+        (ewm:aand pos (nth (1- it) pset)
+                  (ewm:pst-change it)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Framework
@@ -2319,6 +2365,7 @@ from the given string."
 
   (ad-activate-regexp "^ewm:ad-debug" t) ; debug
 
+  (ewm:pstset-defaults) ; 全部使う
   (ewm:pst-set-prev-pst nil)
   (ewm:dp-code)
   (ewm:pst-minor-mode 1)
