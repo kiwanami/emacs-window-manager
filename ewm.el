@@ -436,7 +436,7 @@ from the given string."
       )))
 
 (defun ewm:kill-buffer-hook ()
-  (ewm:message "#KILL HOOK %s" (current-buffer))
+  (ewm:message "#KILL HOOK")
   (when (and (ewm:history-recordable-p (current-buffer))
              (ewm:managed-p))
     ;; killされたら履歴からも消す
@@ -597,8 +597,12 @@ from the given string."
 ;; leave   : このパースペクティブを終了する際に呼ばれる関数。引数：wm。
 ;;         : この関数がnilなら何もしない。
 ;; keymap  : このパースペクティブで有効にするキーマップのシンボル。nilだと何も設定しない。
+;; save    : after-save-hook で呼ばれる。選択されているパースペクティブだけ作用。nilだと何もしない。
 
-(defstruct ewm:$pst-class name title init main start update switch popup leave keymap)
+(defstruct ewm:$pst-class 
+  name title 
+  init main start update switch popup leave
+  keymap save)
 
 (defun ewm:pst-class-register (pst-class)
   ;;パースペクティブクラスの登録
@@ -632,6 +636,8 @@ from the given string."
 (defun ewm:$pst-keymap (pst)
   (ewm:aif (ewm:$pst-class-keymap (ewm:$pst-type pst))
       (symbol-value it) nil))
+(defun ewm:$pst-save (pst)
+  (ewm:$pst-class-save (ewm:$pst-type pst)))
 
 (defun ewm:pst-get-instance ()
   (ewm:frame-param-get 'ewm:pst))
@@ -799,6 +805,11 @@ from the given string."
      (ewm:aif (ewm:$pst-main instance)
          (wlf:set-buffer wm it (ewm:history-get-main-buffer)))
      (ewm:pst-update-windows))))
+
+(defun ewm:pst-after-save-hook ()
+  (ewm:message "$$ AFTER SAVE HOOK")
+  (ewm:safe-call ewm:$pst-save (ewm:pst-get-instance))
+  (ewm:pst-update-windows))
 
 ;;; Commands / Key bindings / Minor Mode
 ;;;--------------------------------------------------
@@ -2511,6 +2522,7 @@ from the given string."
   (add-hook 'window-configuration-change-hook
             'ewm:override-window-cfg-change)
   (add-hook 'completion-setup-hook 'ewm:override-setup-completion)
+  (add-hook 'after-save-hook 'ewm:pst-after-save-hook)
   (setq display-buffer-function 'ewm:override-special-display-function)
 
   (ad-activate-regexp "^ewm:ad-debug" t) ; debug
@@ -2533,6 +2545,7 @@ from the given string."
     (remove-hook 'window-configuration-change-hook 
                  'ewm:override-window-cfg-change)
     (remove-hook 'completion-setup-hook 'ewm:override-setup-completion)
+    (remove-hook 'after-save-hook 'ewm:pst-after-save-hook)
     (setq display-buffer-function nil)
     (ad-deactivate-regexp "^ewm:ad-override$")
 
