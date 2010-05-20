@@ -230,6 +230,13 @@ from the given string."
     (put-text-property 0 1 prop value text))
   text)
 
+(defun ewm:max-length (rows)
+  (loop for i in rows
+        with lmax = 0
+        for ln = (if i (length i) 0)
+        do (setq lmax (max lmax ln))
+        finally return lmax))
+
 (defun ewm:find (name name-func seq)
   (loop for i in seq
         if (eq name (funcall name-func i))
@@ -1612,6 +1619,305 @@ from the given string."
                      "Fancy Clock"
                      'ewm:def-plugin-clock)
 
+;;; files / シンプルなファイル一覧
+;;;--------------------------------------------------
+;; buffer-local : ewm:def-plugin-files-dir
+
+(defvar ewm:def-plugin-files-sort-key 'name) ; name, time, sizeでスイッチ
+(defvar ewm:def-plugin-files-hide-hidden-files t) ; tで隠しファイルを表示しない
+
+(defun ewm:def-plugin-files (frame wm winfo)
+  (let* ((buf (ewm:history-get-main-buffer))
+         (wname (wlf:window-name winfo))
+         (dir (with-current-buffer buf 
+                (or default-directory ".")))
+         (dbuf (get-buffer " *WM:Files*")) pos)
+    (unless (and dbuf (buffer-live-p dbuf))
+      (setq dbuf (get-buffer-create " *WM:Files*"))
+      (with-current-buffer dbuf
+        (ewm:def-plugin-files-mode)
+        (set (make-local-variable 'ewm:def-plugin-files-dir) dir)
+        (setq buffer-read-only t)
+        (buffer-disable-undo dbuf)
+        (setq pos (point-min))
+        (hl-line-mode 1)))
+    (with-current-buffer dbuf
+      (unwind-protect
+          (progn
+            (setq buffer-read-only nil)
+            (setq pos 
+                  (if (and ewm:def-plugin-files-dir
+                           (equal ewm:def-plugin-files-dir dir))
+                      (point) (point-min)))
+            (setq ewm:def-plugin-files-dir dir)
+            (erase-buffer)
+            (ewm:def-plugin-files-update-buffer dir)
+            (goto-char pos))
+        (setq buffer-read-only t)))
+    (wlf:set-buffer wm wname dbuf)))
+
+(ewm:plugin-register 'files 
+                     "Files"
+                     'ewm:def-plugin-files)
+
+(defun ewm:def-plugin-files-update-by-command()
+  (interactive)
+  ;;バッファの存在が前提
+  (with-current-buffer (get-buffer " *WM:Files*")
+    (unwind-protect
+        (progn
+          (setq buffer-read-only nil)
+          (erase-buffer)
+          (ewm:def-plugin-files-update-buffer ewm:def-plugin-files-dir))
+      (setq buffer-read-only t))))
+
+(defun ewm:def-plugin-files-sort (records order)
+  (let* 
+      ((comparator
+        (lambda (ref)
+          (lexical-let ((ref ref))
+            (lambda (i j) 
+              (let ((ii (nth ref i))
+                    (jj (nth ref j)))
+                (cond 
+                 ((string= ii jj) 0)
+                 ((string< ii jj) -1)
+                 (t 1)))))))
+       (negative-comparator
+        (lambda (ref)
+          (lexical-let ((ref ref))
+            (lambda (i j) 
+              (let ((ii (nth ref i))
+                    (jj (nth ref j)))
+                (cond 
+                 ((string= ii jj) 0)
+                 ((string< ii jj) 1)
+                 (t -1)))))))
+       (to-bool 
+        (lambda (f)
+          (lexical-let ((f f))
+            (lambda (i j) 
+              (< (funcall f i j) 0)))))
+       (cmp-name (funcall comparator 0))
+       (cmp-dir  (funcall comparator 4))
+       (cmp-time (funcall negative-comparator 2))
+       (cmp-size (funcall negative-comparator 5))
+       (chain 
+        (lambda (a b)
+          (lexical-let ((a a) (b b))
+            (lambda (i j)
+              (let ((v (funcall a i j)))
+                (if (= 0 v)
+                    (funcall b i j)
+                  v)))))))
+    (nreverse (sort 
+               records
+               (cond
+                ((eq order 'name) ; name -> dir, name
+                 (funcall to-bool (funcall chain cmp-dir cmp-name)))
+                ((eq order 'time) ; time -> dir, time
+                 (funcall to-bool cmp-time))
+                ((eq order 'size) ; size -> dir, size
+                 (funcall to-bool (funcall chain cmp-dir cmp-size)))
+                (t  ; default
+                 (funcall to-bool (funcall chain cmp-dir cmp-name))))))))
+
+(defun ewm:def-plugin-files-update-buffer (dir)
+  (let* ((files 
+          (ewm:def-plugin-files-sort
+           (loop 
+            for f in (directory-files-and-attributes dir)
+            for fn = (car f)
+            unless (or (member fn '(".." "."))
+                       (and ewm:def-plugin-files-hide-hidden-files
+                            (eq (aref fn 0) ?.)))
+            collect (list 
+                     ;; 0:name, 1:dirp, 2:time, 3:size
+                     ;; 4:dirp-str, 5:size-str, 6:float-time
+                     fn (cadr f) 
+                     (format-time-string "%Y/%m/%d %H:%M:%S" (nth 7 f))
+                     (nth 8 f)
+                     (if (cadr f) "d" "f")
+                     (format "%014d" (nth 8 f))
+                     (float-time (nth 7 f))))
+           ewm:def-plugin-files-sort-key)) rows-file rows-time rows-size rows)
+    (loop for i in files
+          for fn = (car i) for tm = (nth 2 i) for sz = (nth 3 i)
+          do
+          (push i rows)
+          (push 
+           (ewm:tp 
+            (ewm:rt (substring fn 0)
+                    (if (cadr i) 'dired-directory 'nil))
+            'ewm:file
+            (expand-file-name fn dir)) rows-file)
+          (push (nth 2 i) rows-time)
+          (push (ewm:format-byte-unit (nth 3 i)) rows-size))
+    (cond
+     ((eq ewm:def-plugin-files-sort-key 'name)
+      (ewm:def-plugin-files-insert-by-name rows-file rows-time rows-size))
+     ((eq ewm:def-plugin-files-sort-key 'time)
+      (ewm:def-plugin-files-insert-by-time rows-file rows-time rows-size rows))
+     ((eq ewm:def-plugin-files-sort-key 'size)
+      (ewm:def-plugin-files-insert-by-size rows-file rows-time rows-size)))
+    (setq header-line-format
+          (format "[%i] %s"
+                  (length files)
+                  (expand-file-name dir)))))
+
+(defun ewm:def-plugin-files-insert-by-name (rows-file rows-time rows-size)
+  (loop for i from 0 below (length rows-file)
+        with wfile = (ewm:max-length rows-file)
+        with wtime = (ewm:max-length rows-time)
+        with fmt = (format "%%-%is  %%%is  %%s\n" wfile wtime)
+        for fn = (pop rows-file)
+        for tm = (ewm:rt (pop rows-time) 'dired-ignored)
+        for sz = (ewm:rt (pop rows-size) 'dired-ignored)
+        do
+        (insert 
+         (format fmt fn tm sz))))
+
+(defun ewm:def-plugin-files-insert-by-time (rows-file rows-time rows-size rows)
+  (let* ((today (apply 'encode-time 
+                       (append '(0 0 0)
+                               (cdddr (decode-time
+                                       (current-time))))))
+         (ftoday  (float-time today))
+         (fyesterday  (- ftoday 86400))
+         (flast-week  (- ftoday (* 86400 7)))
+         (flast-month (- ftoday (* 86400 30))))
+    (loop for i from 0 below (length rows-file)
+          with wfile = (ewm:max-length rows-file)
+          with wtime = (ewm:max-length rows-time)
+          with today-first = nil
+          with last-ftime = (float-time (current-time))
+          with fmt = (format "%%-%is  %%%is  %%s\n" wfile wtime)
+          with spc = (make-string 10 ?-)
+          for fn = (pop rows-file)
+          for tm = (ewm:rt (pop rows-time) 'dired-mark)
+          for sz = (ewm:rt (pop rows-size) 'dired-ignored)
+          for ftm = (nth 6 (pop rows))
+          for splitter =
+          (cond 
+           ((and (> last-ftime flast-month) (> flast-month ftm))
+            "More")
+           ((and (> last-ftime flast-week) (> flast-week ftm))
+            "A Month")
+           ((and (> last-ftime fyesterday) (> fyesterday ftm))
+            "A Week")
+           ((and (> last-ftime ftoday) (> ftoday ftm))
+            "Yesterday")
+           ((and (null today-first) (< ftoday ftm))
+            (setq today-first t)
+            "Today")
+           (t nil))
+          do
+          (when splitter
+            (insert (ewm:rt (concat spc (format "- %s ---------\n" splitter))
+                            'dired-ignored)))
+          (insert 
+           (format fmt fn tm sz))
+          (setq last-ftime ftm))))
+
+(defun ewm:def-plugin-files-insert-by-size (rows-file rows-time rows-size)
+  (loop for i from 0 below (length rows-file)
+        with wfile = (ewm:max-length rows-file)
+        with wsize = (ewm:max-length rows-size)
+        with fmt = (format "%%%is  %%-%is  %%s\n" wsize wfile)
+        for fn = (pop rows-file)
+        for tm = (ewm:rt (pop rows-time) 'dired-ignored)
+        for sz = (ewm:rt (pop rows-size) 'dired-mark)
+        do
+        (insert 
+         (format fmt sz fn tm))))
+
+(defun ewm:def-plugin-files-get-file ()
+  (save-excursion
+    (beginning-of-line)
+    (get-text-property (point) 'ewm:file)))
+
+(defun ewm:def-plugin-files-mkdir-command ()
+  (interactive)
+  (let ((dir 
+         (read-file-name "mkdir: " ewm:def-plugin-files-dir)))
+    (make-directory dir)
+    (ewm:def-plugin-files-update-by-command)))
+(defun ewm:def-plugin-files-delete-command ()
+  (interactive)
+  (let ((file (ewm:def-plugin-files-get-file)))
+    (when (yes-or-no-p (format "Delete [%s] ? " file))
+      (cond
+       ((file-directory-p file)
+        (delete-directory file))
+       (t
+        (delete-file file)))
+      (ewm:def-plugin-files-update-by-command))))
+(defun ewm:def-plugin-files-updir-command ()
+  (interactive)
+  (setq ewm:def-plugin-files-dir 
+        (expand-file-name ".." ewm:def-plugin-files-dir))
+  (ewm:def-plugin-files-update-by-command))
+(defun ewm:def-plugin-files-rename-command ()
+  (interactive)
+  (let ((file (ewm:def-plugin-files-get-file)))
+    (ewm:aif
+        (read-file-name (format "Rename [%s] to: " file) ewm:def-plugin-files-dir)
+        (progn
+          (rename-file file it)
+          (ewm:def-plugin-files-update-by-command)))))
+(defun ewm:def-plugin-files-sort-size-command ()
+  (interactive)
+  (setq ewm:def-plugin-files-sort-key 'size)
+  (ewm:def-plugin-files-update-by-command))
+(defun ewm:def-plugin-files-sort-time-command ()
+  (interactive)
+  (setq ewm:def-plugin-files-sort-key 'time)
+  (ewm:def-plugin-files-update-by-command))
+(defun ewm:def-plugin-files-sort-name-command ()
+  (interactive)
+  (setq ewm:def-plugin-files-sort-key 'name)
+  (ewm:def-plugin-files-update-by-command))
+(defun ewm:def-plugin-files-show-command ()
+  (interactive)
+  (let ((cwin (selected-window)))
+    (ewm:def-plugin-files-select-command)
+    (select-window cwin)))
+(defun ewm:def-plugin-files-select-command ()
+  (interactive)
+  (let ((file (ewm:def-plugin-files-get-file)))
+    (find-file file)
+    (ewm:pst-window-select-main)))
+(defun ewm:def-plugin-files-toggle-hidden-files-command ()
+  (interactive)
+  (setq ewm:def-plugin-files-hide-hidden-files
+        (not ewm:def-plugin-files-hide-hidden-files))
+  (ewm:def-plugin-files-update-by-command))
+(defun ewm:def-plugin-files-open-dired-command ()
+  (interactive)
+  (dired ewm:def-plugin-files-dir))
+
+(defvar ewm:def-plugin-files-mode-map 
+  (ewm:define-keymap 
+   '(("k" . previous-line)
+     ("j" . next-line)
+     ("D" . ewm:def-plugin-files-open-dired-command)
+     ("h" . ewm:def-plugin-files-toggle-hidden-files-command)
+     ("+" . ewm:def-plugin-files-mkdir-command)
+     ("g" . ewm:def-plugin-files-update-by-command)
+     ("d" . ewm:def-plugin-files-delete-command)
+     ("^" . ewm:def-plugin-files-updir-command)
+     ("r" . ewm:def-plugin-files-rename-command)
+     ("T" . ewm:def-plugin-files-sort-time-command)
+     ("S" . ewm:def-plugin-files-sort-name-command)
+     ("Z" . ewm:def-plugin-files-sort-size-command)
+     ("q" . ewm:pst-window-select-main-command)
+     ("<SPC>" . ewm:def-plugin-files-show-command)
+     ("C-m"   . ewm:def-plugin-files-select-command)
+     )))
+
+(define-derived-mode ewm:def-plugin-files-mode fundamental-mode "Files")
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
 
@@ -1629,7 +1935,7 @@ from the given string."
 
 (defvar ewm:c-code-winfo
   '((:name main)
-    (:name files :plugin dir-files)
+    (:name files :plugin files)
     (:name history :plugin history-list)
     (:name sub :buffer "*info*" :default-hide t)
     (:name imenu :plugin imenu :default-hide nil))
