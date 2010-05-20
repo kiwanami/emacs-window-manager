@@ -1204,7 +1204,7 @@ from the given string."
 (defun ewm:def-plugin-imenu (frame wm winfo)
   (let ((entries (ewm:def-plugin-imenu-entries))
         (wname (wlf:window-name winfo))
-        (buf (wlf:window-option-get winfo :buffer)))
+        (buf (wlf:window-option-get winfo :buffer)) pos)
     (unless (and buf (buffer-live-p buf))
       (setq buf (get-buffer-create " *WM:Imenu*"))
       (with-current-buffer buf
@@ -1217,15 +1217,17 @@ from the given string."
       (unwind-protect
           (progn
             (setq buffer-read-only nil)
+            (setq pos (point))
             (erase-buffer)
-            (goto-char (point-min))
-              (loop for i in entries
-                    do (insert (format "%s\n" i)))
-              (setq header-line-format
-                    (format "Imenu entries [%i]" (length entries)))
+            (loop for i in entries
+                  do (insert (format "%s\n" i)))
+            (setq header-line-format
+                  (format "Imenu entries [%i]" (length entries)))
+            (goto-char pos)
             (hl-line-highlight))
         (setq buffer-read-only t)))
-    (wlf:set-buffer wm wname buf)))
+    (wlf:set-buffer wm wname buf)
+    (set-window-point (wlf:get-window wm wname) pos)))
 
 (defun ewm:def-plugin-imenu-entries ()
   (with-current-buffer (ewm:history-get-main-buffer)
@@ -1355,12 +1357,12 @@ from the given string."
       ((eql win (get-buffer-window main-buf))
        (let ((name (ewm:def-plugin-imenu-which-func)))
          (when (and name (window-live-p imenu-win))
-           (with-selected-window imenu-win
+           (with-current-buffer imenu-buf
              (goto-char (point-min))
              (let ((ps (re-search-forward (concat "^" name "$"))))
                (when ps
-                 (goto-char ps)
                  (beginning-of-line)
+                 (set-window-point imenu-win (point))
                  (hl-line-highlight)))))))
       (t
        ;;can not update
