@@ -1496,18 +1496,22 @@ from the given string."
       (setq buf (get-buffer-create ewm:def-plugin-top-buffer-name))
       (with-current-buffer buf
         (buffer-disable-undo buf)))
-    (let ((proc (start-process "WM:top" tmpbuf "top" "-b -n 1")))
-      (set-process-sentinel
-       proc (lambda(proc event)
-              (with-current-buffer buf
-                (erase-buffer)
-                (if (equal event "finished\n")
-                  (insert-buffer-substring tmpbuf)
-                  (insert "Error: Can not use top output.\n" 
-                          (format "%s" event)))
-                (goto-char (point-min))
-                (kill-buffer tmpbuf))
-              )))
+    (let (proc)
+      (condition-case err
+          (setq proc (start-process "WM:top" tmpbuf "top" "-b -n 1"))
+        (nil (delete-process "WM:top")))
+      (when proc
+        (set-process-sentinel
+         proc (lambda(proc event)
+                (with-current-buffer buf
+                  (erase-buffer)
+                  (if (equal event "finished\n")
+                      (insert-buffer-substring tmpbuf)
+                    (insert "Error: Can not use top output.\n" 
+                            (format "%s" event)))
+                  (goto-char (point-min))
+                  (kill-buffer tmpbuf))
+                ))))
     buf))
 
 (ewm:plugin-register 'top 
