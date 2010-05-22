@@ -1917,6 +1917,30 @@ from the given string."
 
 (define-derived-mode ewm:def-plugin-files-mode fundamental-mode "Files")
 
+;;; open / バッファ表示・コマンド実行
+;;; 指定のバッファを表示バッファの存在をチェックして、無かったらコマンドを実行
+;;;--------------------------------------------------
+;; w3m や twittering-mode などを起動
+;; 例 (:name window-name :plugin open :plugin-args (:buffer "*w3m*" :command 'w3m))
+;;  :buffer  : 表示すべきバッファ。存在してなければコマンドを実行する。lambdaでも可。
+;;  :command : 実行すべき関数のシンボル。関数の返値はバッファオブジェクト。
+
+(defun ewm:def-plugin-open (frame wm winfo)
+  (let* ((plugin-args (wlf:window-option-get winfo :plugin-args))
+         (buffer-name (plist-get plugin-args ':buffer))
+         (command (plist-get plugin-args ':command)) buf)
+    (unless (and command buffer-name)
+      (error "ewm:plugin open: arguments can not be nil. Check the options."))
+    (setq buf (get-buffer buffer-name))
+    (unless buf
+      (with-selected-window (wlf:get-window wm (wlf:window-name winfo))
+        (setq buf (funcall command))))
+    (when buf
+      (wlf:set-buffer wm (wlf:window-name winfo) buf))))
+
+(ewm:plugin-register 'open
+                     "Open Buffer"
+                     'ewm:def-plugin-open)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
@@ -2335,15 +2359,15 @@ from the given string."
          ("prefix I" . info))
        ewm:prefix-key))
 
-;;; repository / Repository management perspective
-;;;--------------------------------------------------
-;; TODO
-
-
 ;;; dashboard / dashboard buffers perspective
 ;;;--------------------------------------------------
 
-(defvar ewm:c-dashboard-plugins '(clock top))
+(defvar ewm:c-dashboard-plugins
+  '(clock 
+    top 
+    (open :plugin-args (:command eshell :buffer "*eshell*"))
+    (open :plugin-args (:command doctor :buffer "*doctor*"))
+    ))
 
 (ewm:pst-class-register
  (make-ewm:$pst-class
@@ -2351,7 +2375,8 @@ from the given string."
      :title  "Dashboard"
      :main   'w-1-1
      :init   'ewm:dp-dashboard-init
-     :start  'ewm:dp-dashboard-start))
+     :start  'ewm:dp-dashboard-start
+     :leave  'ewm:dp-dashboard-leave))
 
 (defun ewm:dp-dashboard-init ()
   (let* ((size (ewm:dp-array-calculate-size
@@ -2376,7 +2401,7 @@ from the given string."
           (plist-put opt ':plugin plugin))
          ((consp plugin)
           (plist-put opt ':plugin (car plugin))
-          (nconc opts (cdr plugin)))
+          (nconc opt (cdr plugin)))
          (t
           (plist-put opt ':buffer ewm:c-blank-buffer)))
         (incf cnt))
@@ -2384,6 +2409,10 @@ from the given string."
 
 (defun ewm:dp-dashboard-start (wm)
   (ewm:dp-dashboard-update-summary))
+
+(defun ewm:dp-dashboard-leave (wm)
+  (unless (ewm:history-recordable-p prev-selected-buffer)
+    (setq prev-selected-buffer nil)))   ; 次のパースペクティブは履歴から持ってきてもらう
 
 (defun ewm:dp-dashboard-update-summary ()
   (let* ((bufname " *WM:EmacsStat*")
