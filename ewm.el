@@ -102,8 +102,13 @@
 
 (defvar ewm:c-max-history-num 20 "Number of buffer history.")   ; 履歴の保存数
 (defvar ewm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
-      (lambda (buf)
-        (buffer-local-value 'buffer-file-name buf))) ; ファイル名に関連ついてるもの
+  (lambda (buf)
+    (buffer-local-value 'buffer-file-name buf))
+  "Return non-nil, if the buffer is an editable buffer.") ; ファイル名に関連ついてるもの
+(defvar ewm:c-document-buffer-p ; 
+  (lambda (buf)
+    (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)" (buffer-name buf)))
+  "Retrun non-nil, if the buffer is a document buffer.") ; ドキュメント的に扱いたいバッファ
 (defvar ewm:c-blank-buffer         ; 白紙バッファ
       (let ((buf (get-buffer-create " *ewm:blank*")))
         (with-current-buffer buf
@@ -113,7 +118,7 @@
           (setq buffer-read-only t)) buf)
       "Blank buffer.")
 
-(defvar ewm:prefix-key "C-c ; ")
+(defvar ewm:prefix-key "C-c ; " "Prefix key")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Macro / Utilities
@@ -260,11 +265,21 @@ from the given string."
 
 (defun ewm:format-byte-unit (size)
   (cond ((> size (* 1048576 4))
-         (format "%i Mb" (round (/ size 1048576))))
+         (format "%s Mb" (ewm:num (round (/ size 1048576)))))
         ((> size (* 1024 4))
-         (format "%i Kb" (round (/ size 1024))))
+         (format "%s Kb" (ewm:num (round (/ size 1024)))))
         (t
-         (format "%i bytes" size))))
+         (format "%s bytes" (ewm:num size)))))
+
+(defun ewm:num (number)
+  (let ((base (format "%s" number)))
+    (flet 
+        ((rec (str len)
+              (let ((pos (- len 3)))
+                (if (< pos 1) str
+                  (concat (rec (substring str 0 pos) pos)
+                          "," (substring str pos))))))
+      (rec base (length base)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
@@ -274,6 +289,10 @@ from the given string."
 
 (defun ewm:frame-param-set (name val)
   (set-frame-parameter (selected-frame) name val))  
+
+(defun ewm:document-buffer-p (buffer)
+  (if (and buffer (buffer-live-p buffer))
+      (funcall ewm:c-document-buffer-p buffer)))
 
 (defun ewm:history-get ()
   (ewm:frame-param-get 'ewm:buffer-history))
@@ -578,7 +597,10 @@ from the given string."
 ;;   →この構造体でパースペクティブの定義を行う
 ;;     (*)は必須
 ;; name    : (*)このパースペクティブの名前、シンボル
+;; extend  : このパースペクティブの継承元。以下のものでこのクラスの定義が nil だったら継承元を呼ぶ。
+;;         : もしくは、(ewm:$pst-class-super) （ダイナミックバインド関数）を呼ぶ。
 ;; init    : (*)このパースペクティブのコンストラクタ
+;;         : 継承元を呼ぶ場合は (ewm:$pst-class-super) （ダイナミックバインド関数）を呼ぶ。
 ;;         : 返値として wset 構造体を返す。
 ;;         : 基本的に wset 構造体だけを返すようにして、レイアウトや
 ;;         : 必要なフックなどのセットアップが必要であれば下のstartで行う。
@@ -1298,6 +1320,10 @@ from the given string."
    '(("C-m" . ewm:def-plugin-imenu-jump-command)
      ("j" . next-line)
      ("k" . previous-line)
+     ("u" . scroll-down)
+     ("v" . scroll-down)
+     ("d" . scroll-up)
+     ("e" . scroll-up)
      ("q" . ewm:pst-window-select-main-command)
      ("<SPC>" . ewm:def-plugin-imenu-show-command)
      )))
@@ -1742,13 +1768,17 @@ from the given string."
                      (float-time (nth 7 f))))
            ewm:def-plugin-files-sort-key)) rows-file rows-time rows-size rows)
     (loop for i in files
-          for fn = (car i) for tm = (nth 2 i) for sz = (nth 3 i)
+          for fn = (substring (car i) 0) 
+          for tm = (nth 2 i) for sz = (nth 3 i)
+          for type = (cadr i)
           do
           (push i rows)
           (push 
            (ewm:tp 
-            (ewm:rt (substring fn 0)
-                    (if (cadr i) 'dired-directory 'nil))
+            (cond
+             ((stringp type) (ewm:rt fn 'dired-symlink))
+             (type (ewm:rt fn 'dired-directory))
+             (t fn))
             'ewm:file
             (expand-file-name fn dir)) rows-file)
           (push (nth 2 i) rows-time)
@@ -1802,9 +1832,9 @@ from the given string."
            ((and (> last-ftime flast-month) (> flast-month ftm))
             "More")
            ((and (> last-ftime flast-week) (> flast-week ftm))
-            "A Month")
+            "One Month")
            ((and (> last-ftime fyesterday) (> fyesterday ftm))
-            "A Week")
+            "Last Week")
            ((and (> last-ftime ftoday) (> ftoday ftm))
             "Yesterday")
            ((and (null today-first) (< ftoday ftm))
@@ -1907,9 +1937,9 @@ from the given string."
      ("d" . ewm:def-plugin-files-delete-command)
      ("^" . ewm:def-plugin-files-updir-command)
      ("r" . ewm:def-plugin-files-rename-command)
-     ("T" . ewm:def-plugin-files-sort-time-command)
-     ("S" . ewm:def-plugin-files-sort-name-command)
-     ("Z" . ewm:def-plugin-files-sort-size-command)
+     ("t" . ewm:def-plugin-files-sort-time-command)
+     ("s" . ewm:def-plugin-files-sort-name-command)
+     ("z" . ewm:def-plugin-files-sort-size-command)
      ("q" . ewm:pst-window-select-main-command)
      ("<SPC>" . ewm:def-plugin-files-show-command)
      ("C-m"   . ewm:def-plugin-files-select-command)
@@ -2102,8 +2132,6 @@ from the given string."
         (:name sub :buffer "*Help*" :default-hide t)
         (:name history :plugin history-list :default-hide nil)))
 
-(defvar ewm:c-two-show-side-regexp "\\*\\(Help\\|info\\|w3m\\)\\*")
-
 (ewm:pst-class-register
   (make-ewm:$pst-class
    :name   'two
@@ -2157,7 +2185,7 @@ from the given string."
   (ewm:message "#DP TWO popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((string-match ewm:c-two-show-side-regexp buf-name)
+     ((ewm:document-buffer-p buf)
       (wlf:set-buffer (ewm:pst-get-wm) 'right buf)
       t)
      ((ewm:history-recordable-p buf)
@@ -2232,10 +2260,6 @@ from the given string."
         (:name right)
         (:name sub :default-hide t)))
 
-(setq ewm:c-doc-show-main-func
-      (lambda (buf)
-        (string-match "\\*\\(Help\\|info\\|w3m\\)\\*" buf)))
-
 (ewm:pst-class-register 
   (make-ewm:$pst-class
    :name   'doc
@@ -2304,7 +2328,7 @@ from the given string."
   (ewm:message "#DP DOC popup : %s" buf)
   (let ((buf-name (buffer-name buf)))
     (cond
-     ((or (funcall ewm:c-doc-show-main-func buf-name)
+     ((or (ewm:document-buffer-p buf)
           (ewm:history-recordable-p buf))
       (ewm:dp-doc-set-main-buffer buf)
       t)
@@ -2462,16 +2486,16 @@ from the given string."
          (ewm:rt-format "Emacs stat:\n"))
         (insert
          (ewm:rt-format "  Conses: %s (%s%%) /  Syms: %s (%s%%) / Miscs: %s (%s%%) / String Chars %s\n"
-                        used-conses (percent used-conses free-conses)
-                        used-syms (percent used-syms free-syms)
-                        used-miscs (percent used-miscs free-miscs)
-                        used-string-chars))
+                        (ewm:num used-conses) (percent used-conses free-conses)
+                        (ewm:num used-syms) (percent used-syms free-syms)
+                        (ewm:num used-miscs) (percent used-miscs free-miscs)
+                        (ewm:num used-string-chars)))
         (insert
          (ewm:rt-format "  Floats: %s (%s%%) /  Strings: %s (%s%%) / Intervals: %s (%s%%) / Vectors %s\n"
-                        used-floats (percent used-floats free-floats)
-                        used-strings (percent used-strings free-strings)
-                        used-intervals (percent used-intervals free-intervals)
-                        used-vector-slots))
+                        (ewm:num used-floats) (percent used-floats free-floats)
+                        (ewm:num used-strings) (percent used-strings free-strings)
+                        (ewm:num used-intervals) (percent used-intervals free-intervals)
+                        (ewm:num used-vector-slots)))
          (insert
           (ewm:rt-format "  Buffers: %s  /  Memory Limit: %s  /  Pure: %s"
                          buf-num mem-limit pure-mem))))))
@@ -2497,9 +2521,10 @@ from the given string."
         (memq (buffer-local-value 'major-mode b)  
               '(dired-mode)))
        (or
+        (ewm:document-buffer-p b) ; ドキュメントは表示する
         (not (string-match "^ ?\\*" bn)) ; 内部バッファは表示しないが、
         (string-match ; 以下のものは表示する
-         "\\*\\(Help\\|info\\|scratch\\|w3m\\|Messages\\)\\*" 
+         "\\*\\(scratch\\|Messages\\)\\*" 
          bn))))))
       
 (defun ewm:dp-array-make-recipe (cols rows)
