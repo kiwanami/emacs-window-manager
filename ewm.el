@@ -132,6 +132,51 @@
   `(let ((it ,test))
      (if it ,(if rest (macroexpand-all `(ewm:aand ,@rest)) 'it))))
 
+(defmacro ewm:not-minibuffer (&rest body)
+  `(when (= 0 (minibuffer-depth))
+     ,@body))
+
+(defmacro ewm:safe-call (method object &rest args)
+  (let ((sym (gensym)))
+    `(let ((,sym (,method ,object)))
+       (if ,sym
+           (funcall ,sym ,@args)))))
+
+;; for a list of structure
+
+(defun ewm:find (name name-func seq)
+  (loop for i in seq
+        if (eq name (funcall name-func i))
+        return i))
+
+(defmacro ewm:delete! (name name-func seq)
+  `(setq ,seq 
+         (delete-if 
+          (lambda (i) (eq ,name (funcall ',name-func i)))
+             ,seq)))
+
+;; debug
+
+(eval-and-compile
+  (defvar ewm:debug nil "Debug output switch.")) ; debug
+(defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
+
+(defmacro ewm:message (&rest args) ; debug
+  (when ewm:debug
+    `(progn 
+       (with-current-buffer (get-buffer-create "*ewm:debug*")
+         (save-excursion
+           (goto-char (point-max))
+           (insert (format "%5i %s\n" ewm:debug-count (format ,@args)))))
+       (incf ewm:debug-count))))
+
+(defun ewm:message-mark () ; debug
+  (interactive)
+  (ewm:message "==================== mark ==== %s" 
+               (format-time-string "%H:%M:%S" (current-time))))
+
+;; keymap
+
 (defun ewm:define-keymap (keymap-list &optional prefix)
   (let ((map (make-sparse-keymap)))
     (mapc 
@@ -161,23 +206,7 @@
    keymap-list)
   keymap)
 
-(eval-and-compile
-  (defvar ewm:debug nil "Debug output switch.")) ; debug
-(defvar ewm:debug-count 0 "[internal] Debug output counter.") ; debug
-
-(defmacro ewm:message (&rest args)
-  (when ewm:debug
-    `(progn 
-       (with-current-buffer (get-buffer-create "*ewm:debug*")
-         (save-excursion
-           (goto-char (point-max))
-           (insert (format "%5i %s\n" ewm:debug-count (format ,@args)))))
-       (incf ewm:debug-count))))
-
-(defun ewm:message-mark ()
-  (interactive)
-  (ewm:message "==================== mark ==== %s" 
-               (format-time-string "%H:%M:%S" (current-time))))
+;; text / string
 
 (defun ewm:string-trim (txt)
   "Remove white space characters at head and tail
@@ -235,34 +264,6 @@ from the given string."
     (put-text-property 0 1 prop value text))
   text)
 
-(defun ewm:max-length (rows)
-  (loop for i in rows
-        with lmax = 0
-        for ln = (if i (length i) 0)
-        do (setq lmax (max lmax ln))
-        finally return lmax))
-
-(defun ewm:find (name name-func seq)
-  (loop for i in seq
-        if (eq name (funcall name-func i))
-        return i))
-
-(defmacro ewm:delete! (name name-func seq)
-  `(setq ,seq 
-         (delete-if 
-          (lambda (i) (eq ,name (funcall ',name-func i)))
-             ,seq)))
-
-(defmacro ewm:safe-call (method object &rest args)
-  (let ((sym (gensym)))
-    `(let ((,sym (,method ,object)))
-       (if ,sym
-           (funcall ,sym ,@args)))))
-
-(defmacro ewm:not-minibuffer (&rest body)
-  `(when (= 0 (minibuffer-depth))
-     ,@body))
-
 (defun ewm:format-byte-unit (size)
   (cond ((> size (* 1048576 4))
          (format "%s Mb" (ewm:num (round (/ size 1048576)))))
@@ -280,6 +281,13 @@ from the given string."
                   (concat (rec (substring str 0 pos) pos)
                           "," (substring str pos))))))
       (rec base (length base)))))
+
+(defun ewm:max-length (rows)
+  (loop for i in rows
+        with lmax = 0
+        for ln = (if i (length i) 0)
+        do (setq lmax (max lmax ln))
+        finally return lmax))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
@@ -597,7 +605,7 @@ from the given string."
 ;;   →この構造体でパースペクティブの定義を行う
 ;;     (*)は必須
 ;; name    : (*)このパースペクティブの名前、シンボル
-;; extend  : このパースペクティブの継承元。以下のものでこのクラスの定義が nil だったら継承元を呼ぶ。
+;; extend  : このパースペクティブの継承元名。以下のものでこのクラスの定義が nil だったら継承元を呼ぶ。
 ;;         : もしくは、(ewm:$pst-class-super) （ダイナミックバインド関数）を呼ぶ。
 ;; init    : (*)このパースペクティブのコンストラクタ
 ;;         : 継承元を呼ぶ場合は (ewm:$pst-class-super) （ダイナミックバインド関数）を呼ぶ。
@@ -629,7 +637,7 @@ from the given string."
 ;; save    : after-save-hook で呼ばれる。選択されているパースペクティブだけ作用。nilだと何もしない。
 
 (defstruct ewm:$pst-class 
-  name title 
+  name title extend
   init main start update switch popup leave
   keymap save)
 
@@ -645,13 +653,25 @@ from the given string."
 ;; name    : このパースペクティブの名前、シンボル
 ;; wm      : wlfレイアウトオブジェクト
 ;; type    : class オブジェクトへの参照
+;; super   : 継承元クラスオブジェクトへの参照。無ければnil。
 
-(defstruct ewm:$pst name wm type)
+(defstruct ewm:$pst name wm type super)
+
+(defmacro ewm:$pst-get-prop (name pst)
+  ;;現在のクラスが値を持ってなかったら、継承元クラスの値を返す
+  (let ((method-name (intern (format "ewm:$pst-class-%s" name))))
+    `(or (,method-name (ewm:$pst-type ,pst))
+         (and (ewm:$pst-super ,pst) 
+              (,method-name (ewm:$pst-super ,pst))))))
 
 (defun ewm:$pst-title (pst)
-  (ewm:$pst-class-title (ewm:$pst-type pst)))
+  (ewm:$pst-get-prop title pst))
 (defun ewm:$pst-main (pst)
-  (ewm:$pst-class-main (ewm:$pst-type pst)))
+  (ewm:$pst-get-prop main pst))
+(defun ewm:$pst-keymap (pst)
+  (ewm:aif (ewm:$pst-get-prop keymap pst)
+      (symbol-value it) nil))
+
 (defun ewm:$pst-start (pst)
   (ewm:$pst-class-start (ewm:$pst-type pst)))
 (defun ewm:$pst-update (pst)
@@ -662,9 +682,6 @@ from the given string."
   (ewm:$pst-class-popup (ewm:$pst-type pst)))
 (defun ewm:$pst-leave (pst)
   (ewm:$pst-class-leave (ewm:$pst-type pst)))
-(defun ewm:$pst-keymap (pst)
-  (ewm:aif (ewm:$pst-class-keymap (ewm:$pst-type pst))
-      (symbol-value it) nil))
 (defun ewm:$pst-save (pst)
   (ewm:$pst-class-save (ewm:$pst-type pst)))
 
@@ -702,7 +719,7 @@ from the given string."
        (ewm:aif (ewm:$pst-main instance)
            (wlf:select wm it)))
      ;;パースペクティブ固有の処理
-     (ewm:safe-call ewm:$pst-update instance wm)
+     (ewm:pst-method-call ewm:$pst-class-update instance wm)
      ;;プラグイン更新実行
      (ewm:plugin-exec-update (selected-frame) wm)
      )) t)
@@ -710,12 +727,35 @@ from the given string."
 (defun ewm:pst-switch-to-buffer (buf)
   (ewm:message "#PST-SWITCH %s" buf)
   ;;switch-to-bufferを乗っ取ってパースペクティブ側に委譲する
-  (ewm:safe-call ewm:$pst-switch (ewm:pst-get-instance) buf))
+  (ewm:pst-method-call ewm:$pst-class-switch (ewm:pst-get-instance) buf))
 
 (defun ewm:pst-pop-to-buffer (buf)
   (ewm:message "#PST-POPUP %s" buf)
   ;;pop-to-bufferを乗っ取ってパースペクティブ側に委譲する
-  (ewm:safe-call ewm:$pst-popup (ewm:pst-get-instance) buf))
+  (ewm:pst-method-call ewm:$pst-class-popup (ewm:pst-get-instance) buf))
+
+(defun ewm:method-call (method-name class super-class on-nil &rest args)
+  (lexical-let ((method (funcall method-name class))
+                (super-method (and super-class
+                                   (funcall method-name super-class)))
+                (args args))
+    (cond
+     ((and (null method) (null super-method))
+      (if on-nil (error on-nil) nil))
+     ((and method (null super-method))
+      (apply method args))
+     ((and (null method) super-method)
+      (apply super-method args))
+     (t
+      (flet ((super ()
+                    (apply super-method args)))
+        (apply method args))))))
+
+(defmacro ewm:pst-method-call (method-name pst-instance &rest args)
+  `(ewm:method-call 
+    ',method-name 
+    (ewm:$pst-type ,pst-instance)
+    (ewm:$pst-super ,pst-instance) nil ,@args))
 
 (defun ewm:pst-change (next-pst-name)
   (ewm:message "#PST-CHANGE %s" next-pst-name)
@@ -730,19 +770,25 @@ from the given string."
      (t
       (ewm:aif prev-pst-instance
           (progn
-            (ewm:safe-call ewm:$pst-leave it (ewm:$pst-wm it))
+            (ewm:pst-method-call ewm:$pst-class-leave it (ewm:$pst-wm it))
             (unless (eql next-pst-name (ewm:$pst-name it))
               (ewm:pst-set-prev-pst (ewm:$pst-name it)))))
-      (let* ((next-pst-wm
-              (funcall (ewm:$pst-class-init next-pst-class)))
+      (let* ((next-pst-super-class
+              (ewm:$pst-class-extend next-pst-class))
+             (next-pst-wm
+              (ewm:method-call 'ewm:$pst-class-init 
+                               next-pst-class 
+                               next-pst-super-class 
+                               (format "[%s] init method is nil!" next-pst-name)))
              (next-pst-instance 
               (make-ewm:$pst :name next-pst-name
                              :wm next-pst-wm
-                             :type next-pst-class)))
+                             :type next-pst-class
+                             :super next-pst-super-class)))
         (ewm:pst-set-instance next-pst-instance)
         (ewm:pst-change-keymap (ewm:$pst-keymap next-pst-instance))
-        (ewm:safe-call ewm:$pst-start next-pst-instance 
-                       (ewm:$pst-wm next-pst-instance)))))
+        (ewm:pst-method-call ewm:$pst-class-start next-pst-instance 
+                             (ewm:$pst-wm next-pst-instance)))))
     (ewm:pst-update-windows t)))
 
 (defun ewm:pst-change-prev ()
@@ -766,7 +812,7 @@ from the given string."
   ;;set-window-configurationでウインドウは元に戻っている仮定
   (ewm:pst-set-instance pst-instance)
   (ewm:pst-change-keymap (ewm:$pst-keymap pst-instance))
-  (ewm:safe-call ewm:$pst-start pst-instance (ewm:$pst-wm pst-instance)))
+  (ewm:pst-method-call ewm:$pst-class-start pst-instance (ewm:$pst-wm pst-instance)))
 
 (defun ewm:pst-finish ()
   (ewm:message "#PST-FINISH")
@@ -774,8 +820,8 @@ from the given string."
   ;;set-window-configurationで非管理対象画面に切り替えたときなど。
   (let ((prev-pst-instance (ewm:pst-get-instance)))
     (when prev-pst-instance
-      (ewm:safe-call ewm:$pst-leave prev-pst-instance 
-                     (ewm:$pst-wm prev-pst-instance)))
+      (ewm:pst-method-call ewm:$pst-class-leave prev-pst-instance 
+                           (ewm:$pst-wm prev-pst-instance)))
     (ewm:pst-set-instance nil)))
 
 (defun ewm:pst-window-option-get (wm window-name)
@@ -837,7 +883,7 @@ from the given string."
 
 (defun ewm:pst-after-save-hook ()
   (ewm:message "$$ AFTER SAVE HOOK")
-  (ewm:safe-call ewm:$pst-save (ewm:pst-get-instance))
+  (ewm:pst-method-call ewm:$pst-class-save (ewm:pst-get-instance))
   (ewm:pst-update-windows))
 
 ;;; Commands / Key bindings / Minor Mode
@@ -1433,7 +1479,8 @@ from the given string."
   ;;bufferが死んでいれば、タイマー停止
   ;;bufferが生きていれば更新実行
   (let ((buf (get-buffer ewm:def-plugin-top-buffer-name)))
-    (if (and (ewm:managed-p) buf (buffer-live-p buf))
+    (if (and (ewm:managed-p) buf (buffer-live-p buf)
+             (get-buffer-window buf))
         (when (= 0 (minibuffer-depth))
           (ewm:def-plugin-top-update))
       (when ewm:def-plugin-top-timer-handle
@@ -1452,12 +1499,15 @@ from the given string."
     (let ((proc (start-process "WM:top" tmpbuf "top" "-b -n 1")))
       (set-process-sentinel
        proc (lambda(proc event)
-              (if (equal event "finished\n")
-                  (with-current-buffer buf
-                    (erase-buffer)
-                    (insert-buffer-substring tmpbuf)
-                    (goto-char (point-min))
-                    (kill-buffer tmpbuf))))))
+              (with-current-buffer buf
+                (erase-buffer)
+                (if (equal event "finished\n")
+                  (insert-buffer-substring tmpbuf)
+                  (insert "Error: Can not use top output.\n" 
+                          (format "%s" event)))
+                (goto-char (point-min))
+                (kill-buffer tmpbuf))
+              )))
     buf))
 
 (ewm:plugin-register 'top 
