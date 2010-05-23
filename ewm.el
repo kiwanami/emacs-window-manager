@@ -608,7 +608,7 @@ from the given string."
 
 ;; ewm:$pst-class 構造体
 ;;   →この構造体でパースペクティブの定義を行う
-;;     (*)は必須
+;;     (*)は必須（name以外は継承元にあればよい）
 ;; name    : (*)このパースペクティブの名前、シンボル
 ;; extend  : このパースペクティブの継承元名。以下のものでこのクラスの定義が nil だったら継承元を呼ぶ。
 ;;         : もしくは、(ewm:$pst-class-super) （ダイナミックバインド関数）を呼ぶ。
@@ -648,6 +648,11 @@ from the given string."
 
 (defun ewm:pst-class-register (pst-class)
   ;;パースペクティブクラスの登録
+  (when (ewm:aand (ewm:$pst-class-extend pst-class)
+                  (symbolp it))
+    ;;継承元がシンボルだったらオブジェクトに入れ替える
+    (setf (ewm:$pst-class-extend pst-class)
+          (ewm:pst-class-get (ewm:$pst-class-extend pst-class))))
   (push pst-class ewm:pst-list))
 
 (defun ewm:pst-class-get (name)
@@ -658,9 +663,8 @@ from the given string."
 ;; name    : このパースペクティブの名前、シンボル
 ;; wm      : wlfレイアウトオブジェクト
 ;; type    : class オブジェクトへの参照
-;; super   : 継承元クラスオブジェクトへの参照。無ければnil。
 
-(defstruct ewm:$pst name wm type super)
+(defstruct ewm:$pst name wm type)
 
 (defmacro ewm:$pst-get-prop (name pst)
   ;;現在のクラスが値を持ってなかったら、継承元クラスの値を返す
@@ -668,6 +672,31 @@ from the given string."
     `(or (,method-name (ewm:$pst-type ,pst))
          (and (ewm:$pst-super ,pst) 
               (,method-name (ewm:$pst-super ,pst))))))
+
+(defun ewm:method-call (method-name class super-class on-nil &rest args)
+  ;;Java的OOPな継承によるオーバーライドを実現
+  ;;とりあえず継承は１段階のみ
+  (lexical-let ((method (funcall method-name class))
+                (super-method (and super-class
+                                   (funcall method-name super-class)))
+                (args args))
+    (cond
+     ((and (null method) (null super-method))
+      (if on-nil (error on-nil) nil))
+     ((and method (null super-method))
+      (apply method args))
+     ((and (null method) super-method)
+      (apply super-method args))
+     (t
+      (flet ((ewm:$pst-class-super () (apply super-method args)))
+        (apply method args))))))
+
+(defmacro ewm:pst-method-call (method-name pst-instance &rest args)
+  ;;pst用のショートカット
+  `(ewm:method-call 
+    ',method-name 
+    (ewm:$pst-type ,pst-instance)
+    (ewm:$pst-super ,pst-instance) nil ,@args))
 
 (defun ewm:$pst-title (pst)
   (ewm:$pst-get-prop title pst))
@@ -689,6 +718,8 @@ from the given string."
   (ewm:$pst-class-leave (ewm:$pst-type pst)))
 (defun ewm:$pst-save (pst)
   (ewm:$pst-class-save (ewm:$pst-type pst)))
+(defun ewm:$pst-super (pst)
+  (ewm:$pst-class-extend (ewm:$pst-type pst)))
 
 (defun ewm:pst-get-instance ()
   (ewm:frame-param-get 'ewm:pst))
@@ -739,29 +770,6 @@ from the given string."
   ;;pop-to-bufferを乗っ取ってパースペクティブ側に委譲する
   (ewm:pst-method-call ewm:$pst-class-popup (ewm:pst-get-instance) buf))
 
-(defun ewm:method-call (method-name class super-class on-nil &rest args)
-  (lexical-let ((method (funcall method-name class))
-                (super-method (and super-class
-                                   (funcall method-name super-class)))
-                (args args))
-    (cond
-     ((and (null method) (null super-method))
-      (if on-nil (error on-nil) nil))
-     ((and method (null super-method))
-      (apply method args))
-     ((and (null method) super-method)
-      (apply super-method args))
-     (t
-      (flet ((super ()
-                    (apply super-method args)))
-        (apply method args))))))
-
-(defmacro ewm:pst-method-call (method-name pst-instance &rest args)
-  `(ewm:method-call 
-    ',method-name 
-    (ewm:$pst-type ,pst-instance)
-    (ewm:$pst-super ,pst-instance) nil ,@args))
-
 (defun ewm:pst-change (next-pst-name)
   (ewm:message "#PST-CHANGE %s" next-pst-name)
   ;;パースペクティブを変更する
@@ -790,8 +798,7 @@ from the given string."
              (next-pst-instance 
               (make-ewm:$pst :name next-pst-name
                              :wm next-pst-wm
-                             :type next-pst-class
-                             :super next-pst-super-class)))
+                             :type next-pst-class)))
         (ewm:pst-set-instance next-pst-instance)
         (ewm:pst-change-keymap (ewm:$pst-keymap next-pst-instance))
         (ewm:pst-method-call ewm:$pst-class-start next-pst-instance 
