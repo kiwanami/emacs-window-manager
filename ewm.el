@@ -1496,8 +1496,9 @@ from the given string."
           (ewm:message "WM: 'top' update timer stopped.")))))
 
 (defun ewm:def-plugin-top-update ()
-  (lexical-let ((buf (get-buffer ewm:def-plugin-top-buffer-name))
-                (tmpbuf (get-buffer-create " *WM:Top-temp*")))
+  (lexical-let* ((buf (get-buffer ewm:def-plugin-top-buffer-name))
+                 (tmpbuf (get-buffer-create " *WM:Top-temp*"))
+                 (cleanup (lambda() (kill-buffer tmpbuf))))
     (buffer-disable-undo tmpbuf)
     (unless (and buf (buffer-live-p buf))
       (setq buf (get-buffer-create ewm:def-plugin-top-buffer-name))
@@ -1506,7 +1507,11 @@ from the given string."
     (let (proc)
       (condition-case err
           (setq proc (start-process "WM:top" tmpbuf "top" "-b -n 1"))
-        (nil (delete-process "WM:top")))
+        (nil 
+         (with-current-buffer buf
+           (erase-buffer)
+           (insert (error-message-string err))
+           (funcall cleanup))))
       (when proc
         (set-process-sentinel
          proc (lambda(proc event)
@@ -1517,7 +1522,7 @@ from the given string."
                     (insert "Error: Can not use top output.\n" 
                             (format "%s" event)))
                   (goto-char (point-min))
-                  (kill-buffer tmpbuf))
+                  (funcall cleanup))
                 ))))
     buf))
 
