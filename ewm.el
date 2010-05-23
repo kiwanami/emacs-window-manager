@@ -2805,8 +2805,10 @@ from the given string."
    ((buffer-local-value 'buffer-file-name selected-buf)
     (let* ((f (buffer-local-value 'buffer-file-name selected-buf))
            (filename (file-name-nondirectory f))
+           (vc (ewm:aif (buffer-local-value 'vc-mode selected-buf)
+                   (substring it 0) "None"))
            (dir (file-name-directory f))
-           (mode (file-modes f))
+           (mode (file-modes f)) 
            (attr (file-attributes f))
            (modified-time (nth 5 attr))
            (size (nth 7 attr))
@@ -2816,10 +2818,11 @@ from the given string."
                (cons  filename 'ewm:face-title) dir)
        (ewm:rt-format "Mode: %s  /  Modified Time: %s\n"
                (format "%o" mode) (ewm:strtime modified-time))
-       (ewm:rt-format "File Size: %s /  Lines: %s"
+       (ewm:rt-format "File Size: %s  /  Lines: %s  /  Version Control: %s"
                strsize 
                (int-to-string (with-current-buffer selected-buf 
-                 (count-lines (point-min) (point-max))))))))
+                 (count-lines (point-min) (point-max))))
+               vc))))
    (t
     (insert
      (ewm:rt-format 
