@@ -2989,7 +2989,7 @@ from the given string."
         if (ewm:history-recordable-p bo)
         do (ewm:history-add bo)))
 
-(defun ewm:start-management ()
+(defun ewm:start-management (&optional pstset)
   ;;現在のフレームの管理を開始
   (interactive)
   (setq ewm:save-window-configuration 
@@ -3004,10 +3004,11 @@ from the given string."
   (add-hook 'completion-setup-hook 'ewm:override-setup-completion)
   (add-hook 'after-save-hook 'ewm:pst-after-save-hook)
   (setq display-buffer-function 'ewm:override-special-display-function)
-
   (ad-activate-regexp "^ewm:ad-debug" t) ; debug
 
-  (ewm:pstset-defaults) ; 全部使う
+  (if pstset
+      (ewm:pstset-define pstset)
+    (ewm:pstset-defaults)) ; 全部使う
   (ewm:pst-set-prev-pst nil)
   (ewm:dp-code)
   (ewm:pst-minor-mode 1)
