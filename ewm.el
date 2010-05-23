@@ -951,7 +951,7 @@ from the given string."
   "Perspective mode"
   :init-value nil
   :global t
-  :lighter " EWM"
+  :lighter (:eval (format " Ewm(%s)" (ewm:$pst-name (ewm:pst-get-instance))))
   :keymap ewm:pst-minor-mode-keymap
   :group 'ewm:pst-mode
   (if ewm:pst-minor-mode
