@@ -401,6 +401,11 @@ from the given string."
   ;;このフレームがWMで管理対象かどうか
   (ewm:pst-get-instance))
 
+(defun ewm:internal-buffer-p (buf)
+  ;;ewmの管理バッファかどうか
+  ;;TODO: できれば何か印をつけておきたい
+  (ewm:aand buf (string-match "\\*WM:" (buffer-name it))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Advices / Overriding Functions
 
@@ -764,6 +769,8 @@ from the given string."
   (let ((prev-pst-instance (ewm:pst-get-instance))
         (next-pst-class (ewm:pst-class-get next-pst-name))
         (prev-selected-buffer (current-buffer)))
+    (when (ewm:internal-buffer-p prev-selected-buffer)
+      (setq prev-selected-buffer nil))
     (cond
      ((null next-pst-name)
       (error "Perspective [%s] is not found." next-pst-name))
