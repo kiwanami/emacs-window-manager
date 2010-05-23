@@ -2321,6 +2321,47 @@ from the given string."
          ("prefix M" . ewm:dp-two-main-maximize-toggle-command))
        ewm:prefix-key))
 
+;;; htwo / Horizontal split editing perspective
+;;;--------------------------------------------------
+
+(setq ewm:c-htwo-recipe
+      '(| (:left-size-ratio 0.55)
+          (| (:left-max-size 30)
+             (- (:upper-size-ratio 0.7)
+                files history)
+             (- left right)) ; 継承してサボるためにleft,rightにする
+          sub))
+
+(defvar ewm:c-htwo-winfo
+      '((:name left )
+        (:name right :plugin main-prev)
+        (:name sub :buffer "*Help*" :default-hide t)
+        (:name files :plugin files)
+        (:name history :plugin history-list)))
+
+(ewm:pst-class-register
+  (make-ewm:$pst-class
+   :name   'htwo
+   :extend 'two
+   :title  "Horizontal Two"
+   :init   'ewm:dp-htwo-init))
+
+(defun ewm:dp-htwo-init ()
+  (let* 
+      ((htwo-wm 
+        (wlf:no-layout 
+         ewm:c-htwo-recipe
+         ewm:c-htwo-winfo))
+       (buf (or prev-selected-buffer
+                (ewm:history-get-main-buffer))))
+
+    (when (ewm:history-recordable-p prev-selected-buffer)
+      (ewm:history-add prev-selected-buffer))
+    
+    (wlf:set-buffer htwo-wm 'left buf)
+
+    htwo-wm))
+
 ;;; document / Document view perspective
 ;;;--------------------------------------------------
 
