@@ -1257,13 +1257,13 @@ from the given string."
                      "History List"
                      'ewm:def-plugin-history-list)
 
-;;; dir-files / メインバッファの位置のファイル一覧
+;;; dired / メインバッファの位置のファイル一覧
 ;;;--------------------------------------------------
 
 ;; 一番簡単なプラグイン
 ;; diredに丸投げ
 
-(defun ewm:def-plugin-dir-files (frame wm winfo) 
+(defun ewm:def-plugin-dired (frame wm winfo) 
   (let* ((buf (ewm:history-get-main-buffer))
          (dir (with-current-buffer buf 
                 (or default-directory ".")))
@@ -1271,9 +1271,9 @@ from the given string."
     (with-current-buffer dbuf (revert-buffer))
     (wlf:set-buffer wm (wlf:window-name winfo) dbuf)))
 
-(ewm:plugin-register 'dir-files 
+(ewm:plugin-register 'dired
                      "Dired"
-                     'ewm:def-plugin-dir-files)
+                     'ewm:def-plugin-dired)
 
 ;;; imenu / Imenuで概要参照
 ;;;--------------------------------------------------
