@@ -1200,6 +1200,9 @@ from the given string."
                                 'ewm:buffer h))
                     (incf cnt))
               (goto-line (1+ (length history-backup)))
+              (setq mode-line-format 
+                    '("-" mode-line-mule-info
+                      " " mode-line-position "-%-"))
               (setq header-line-format
                     (format "Buffer History [%i]" (1- cnt))))
             (hl-line-highlight))
@@ -1310,6 +1313,9 @@ from the given string."
             (erase-buffer)
             (loop for i in entries
                   do (insert (format "%s\n" i)))
+            (setq mode-line-format 
+                  '("-" mode-line-mule-info
+                    " " mode-line-position "-%-"))
             (setq header-line-format
                   (format "Imenu entries [%i]" (length entries)))
             (goto-char pos)
@@ -1621,7 +1627,10 @@ from the given string."
     (unless (and buf (buffer-live-p buf))
       (setq buf (get-buffer-create ewm:def-plugin-clock-buffer-name))
       (with-current-buffer buf
-        (buffer-disable-undo buf)))
+        (buffer-disable-undo buf)
+        (setq mode-line-format 
+              '("-" mode-line-mule-info
+                " Ewm Clock -%-"))))
     (ewm:def-plugin-clock-download)
     buf))
 
@@ -1720,22 +1729,30 @@ from the given string."
 
 ;;; files / シンプルなファイル一覧
 ;;;--------------------------------------------------
+;; 例 (:name window-name :plugin files) ;デフォルト
+;;    (:name window-name :plugin files 
+;;     :plugin-args (:sort time :show-hidden t)) ; 設定付き
 ;; buffer-local : ewm:def-plugin-files-dir
-
-(defvar ewm:def-plugin-files-sort-key 'name) ; name, time, sizeでスイッチ
-(defvar ewm:def-plugin-files-hide-hidden-files t) ; tで隠しファイルを表示しない
+;;                ewm:def-plugin-files-sort-key
+;;                ewm:def-plugin-files-hide-hidden-files
 
 (defun ewm:def-plugin-files (frame wm winfo)
   (let* ((buf (ewm:history-get-main-buffer))
          (wname (wlf:window-name winfo))
+         (opts (wlf:window-option-get winfo :plugin-args))
+         (opt-sort-key (or (plist-get opts ':sort) 'name))
+         (opt-hide-hidden (not (plist-get opts ':show-hidden)))
          (dir (with-current-buffer buf 
                 (or default-directory ".")))
-         (dbuf (get-buffer " *WM:Files*")) pos)
+         (buf-name (format " *WM:Files-%s*" wname))
+         (dbuf (get-buffer buf-name)) pos)
     (unless (and dbuf (buffer-live-p dbuf))
-      (setq dbuf (get-buffer-create " *WM:Files*"))
+      (setq dbuf (get-buffer-create buf-name))
       (with-current-buffer dbuf
         (ewm:def-plugin-files-mode)
         (set (make-local-variable 'ewm:def-plugin-files-dir) dir)
+        (set (make-local-variable 'ewm:def-plugin-files-sort-key) opt-sort-key)
+        (set (make-local-variable 'ewm:def-plugin-files-hide-hidden-files) opt-hide-hidden)
         (setq buffer-read-only t)
         (buffer-disable-undo dbuf)
         (setq pos (point-min))
@@ -1761,8 +1778,8 @@ from the given string."
 
 (defun ewm:def-plugin-files-update-by-command()
   (interactive)
-  ;;バッファの存在が前提
-  (with-current-buffer (get-buffer " *WM:Files*")
+  ;;カレントバッファが対象のバッファである前提
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
     (unwind-protect
         (progn
           (setq buffer-read-only nil)
@@ -1863,6 +1880,9 @@ from the given string."
       (ewm:def-plugin-files-insert-by-time rows-file rows-time rows-size rows))
      ((eq ewm:def-plugin-files-sort-key 'size)
       (ewm:def-plugin-files-insert-by-size rows-file rows-time rows-size)))
+    (setq mode-line-format 
+          '("-" mode-line-mule-info
+            " " mode-line-position "-%-"))
     (setq header-line-format
           (format "[%i] %s"
                   (length files)
@@ -1957,9 +1977,10 @@ from the given string."
       (ewm:def-plugin-files-update-by-command))))
 (defun ewm:def-plugin-files-updir-command ()
   (interactive)
-  (setq ewm:def-plugin-files-dir 
-        (expand-file-name ".." ewm:def-plugin-files-dir))
-  (ewm:def-plugin-files-update-by-command))
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
+    (setq ewm:def-plugin-files-dir 
+          (expand-file-name ".." ewm:def-plugin-files-dir))
+    (ewm:def-plugin-files-update-by-command)))
 (defun ewm:def-plugin-files-rename-command ()
   (interactive)
   (let ((file (ewm:def-plugin-files-get-file)))
@@ -1970,16 +1991,19 @@ from the given string."
           (ewm:def-plugin-files-update-by-command)))))
 (defun ewm:def-plugin-files-sort-size-command ()
   (interactive)
-  (setq ewm:def-plugin-files-sort-key 'size)
-  (ewm:def-plugin-files-update-by-command))
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
+    (setq ewm:def-plugin-files-sort-key 'size)
+    (ewm:def-plugin-files-update-by-command)))
 (defun ewm:def-plugin-files-sort-time-command ()
   (interactive)
-  (setq ewm:def-plugin-files-sort-key 'time)
-  (ewm:def-plugin-files-update-by-command))
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
+    (setq ewm:def-plugin-files-sort-key 'time)
+    (ewm:def-plugin-files-update-by-command)))
 (defun ewm:def-plugin-files-sort-name-command ()
   (interactive)
-  (setq ewm:def-plugin-files-sort-key 'name)
-  (ewm:def-plugin-files-update-by-command))
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
+    (setq ewm:def-plugin-files-sort-key 'name)
+    (ewm:def-plugin-files-update-by-command)))
 (defun ewm:def-plugin-files-show-command ()
   (interactive)
   (let ((cwin (selected-window)))
@@ -1988,14 +2012,20 @@ from the given string."
 (defun ewm:def-plugin-files-select-command ()
   (interactive)
   (let ((file (ewm:def-plugin-files-get-file)))
-    (ewm:history-add (find-file-noselect file))
-    (ewm:pst-show-history-main)
-    (ewm:pst-window-select-main)))
+    (cond
+     ((file-directory-p file)
+      (setq ewm:def-plugin-files-dir file)
+      (ewm:def-plugin-files-update-by-command))
+     (t
+      (ewm:history-add (find-file-noselect file))
+      (ewm:pst-show-history-main)
+      (ewm:pst-window-select-main)))))
 (defun ewm:def-plugin-files-toggle-hidden-files-command ()
   (interactive)
-  (setq ewm:def-plugin-files-hide-hidden-files
-        (not ewm:def-plugin-files-hide-hidden-files))
-  (ewm:def-plugin-files-update-by-command))
+  (when (eq major-mode 'ewm:def-plugin-files-mode)
+    (setq ewm:def-plugin-files-hide-hidden-files
+          (not ewm:def-plugin-files-hide-hidden-files))
+    (ewm:def-plugin-files-update-by-command)))
 (defun ewm:def-plugin-files-open-dired-command ()
   (interactive)
   (dired ewm:def-plugin-files-dir))
