@@ -2202,8 +2202,7 @@ from the given string."
   (wlf:select (ewm:pst-get-wm) 'sub))
 (defun ewm:dp-code-main-maximize-toggle-command ()
   (interactive)
-  (wlf:toggle-maximize (ewm:pst-get-wm) 'main)
-  (ewm:pst-update-windows))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'main))
 
 (defun ewm:dp-code-toggle-clock-command ()
   (interactive)
@@ -2341,8 +2340,7 @@ from the given string."
 
 (defun ewm:dp-two-main-maximize-toggle-command ()
   (interactive)
-  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
-  (ewm:pst-update-windows))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'left))
 
 (defvar ewm:dp-two-minor-mode-map 
 
@@ -2518,8 +2516,7 @@ from the given string."
   (ewm:pst-update-windows))
 (defun ewm:dp-doc-main-maximize-toggle-command ()
   (interactive)
-  (wlf:toggle-maximize (ewm:pst-get-wm) 'left)
-  (ewm:pst-update-windows))
+  (wlf:toggle-maximize (ewm:pst-get-wm) 'left))
 
 (defvar ewm:dp-doc-minor-mode-map 
       (ewm:define-keymap
