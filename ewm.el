@@ -1715,7 +1715,9 @@ from the given string."
       (insert 
        (ewm:rt-format
         "\nSystem: %s\nLoad Average: %s\n\n"
-        (system-name) (apply 'format "%.2f, %.2f, %.2f" (load-average t))))
+        (system-name) 
+        (mapconcat 'identity (loop for i in (load-average t)
+                                   collect (format "%.2f" i)) ", ")))
       (insert 
        (ewm:rt-format
         "Date: %s\nTime: %s\n"
