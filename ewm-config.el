@@ -85,8 +85,8 @@
 ;; キーバインド
 (ewm:add-keymap 
  ewm:pst-minor-mode-keymap
- '(("<M-right>" . ewm:dp-code) ; codeへ変更
-   ("<M-left>"  . ewm:dp-two)  ; twoへ変更
+ '(("<M-left>" . ewm:dp-code) ; codeへ変更
+   ("<M-right>"  . ewm:dp-two)  ; twoへ変更
    ("<M-up>"    . ewm:dp-doc)  ; docへ変更
    ("<M-down>"  . ewm:dp-dashboard) ; dashboardへ変更
    ("C-."       . ewm:pst-history-forward-command) ; 履歴を進む
