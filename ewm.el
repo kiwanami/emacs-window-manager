@@ -2532,8 +2532,7 @@ from the given string."
 ;;;--------------------------------------------------
 
 (defvar ewm:c-dashboard-plugins
-  '(clock 
-    top 
+  '(
     (open :plugin-args (:command eshell :buffer "*eshell*"))
     (open :plugin-args (:command doctor :buffer "*doctor*"))
     ))
@@ -3040,7 +3039,7 @@ from the given string."
       (ewm:pstset-define pstset)
     (ewm:pstset-defaults)) ; 全部使う
   (ewm:pst-set-prev-pst nil)
-  (ewm:dp-code)
+  (ewm:pst-change (car (ewm:pstset-get-current-pstset))) ; 先頭をメインとする
   (ewm:pst-minor-mode 1)
   (ewm:menu-define))
 
