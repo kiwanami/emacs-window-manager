@@ -1581,7 +1581,7 @@ from the given string."
 ;;;--------------------------------------------------
 
 (defvar ewm:def-plugin-clock-timer-interval 60 "Seconds for update.")
-(defvar ewm:def-plugin-clock-text t)
+(defvar ewm:def-plugin-clock-text nil)
 (defvar ewm:def-plugin-clock-url "http://www.bijint.com/jp/img/clk/%H%M.jpg" "URL pattern.")
 (defvar ewm:def-plugin-clock-referer "http://www.bijint.com/jp/" "referer URL")
 
