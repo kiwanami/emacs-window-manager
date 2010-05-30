@@ -89,7 +89,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl))
+(require 'cl)
 
 (require 'imenu)
 (require 'easymenu)
@@ -407,200 +407,6 @@ from the given string."
   (ewm:aand buf (string-match "\\*WM:" (buffer-name it))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ### Advices / Overriding Functions
-
-(defvar ewm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
-
-(defmacro ewm:with-advice (&rest body)
-  ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
-  ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
-  ;;本来の動きにしたい場合はこのマクロで囲む。
-  `(if ewm:ad-now-overriding
-       (progn ,@body) ; 再帰している場合
-     (setq ewm:ad-now-overriding t) ; 初回
-     (unwind-protect 
-         (progn ,@body) 
-       (setq ewm:ad-now-overriding nil))))
-
-(defadvice switch-to-buffer (around
-                             ewm:ad-override
-                             (buf &optional norecord))
-  (ewm:message "#SWITCH-TO-BUFFER %s" buf)
-  (let (overrided)
-    (when (and buf 
-               (not ewm:ad-now-overriding) ; 再入してなくて
-               (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
-      (ewm:with-advice
-       (ewm:message "#AD-SWITCH-TO-BUFFER %s" buf)
-       (ewm:history-add buf)
-       (setq overrided (ewm:pst-switch-to-buffer (get-buffer-create buf)))))
-    (if overrided
-        (progn
-          (set-buffer buf))
-      ad-do-it) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
-    buf))
-
-(defadvice pop-to-buffer (around 
-                          ewm:ad-override
-                          (buf &optional other-window norecord))
-  (ewm:message "#POP-TO-BUFFER %s" buf)
-  (let (overrided)
-    (when (and buf 
-               (not ewm:ad-now-overriding) ; 再入してなくて
-               (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
-      (ewm:with-advice
-       (ewm:message "#AD-POP-TO-BUFFER %s" buf)
-       (ewm:history-add buf)
-       (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
-    (if overrided
-        (progn (set-buffer buf) buf)
-      ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
-
-(defun ewm:override-special-display-function (buf &optional args)
-  (ewm:message "#SPECIAL-DISPLAY-FUNC %s" buf)
-  (let (overrided)
-    (when (and 
-           buf 
-           (not ewm:ad-now-overriding) ; 再入してなくて
-           (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
-      (ewm:with-advice
-       (ewm:message "#AD-SPECIAL-DISPLAY-FUNC %s" buf)
-       (ewm:history-add buf)
-       (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
-    (if overrided
-        (progn (set-buffer buf) (get-buffer-window buf))
-      (ewm:message "#DISPLAY-BUFFER ") ;;適当な場所に表示する
-      (set-window-buffer (selected-window) buf)
-      (set-buffer buf) (selected-window) 
-      )))
-
-(defun ewm:kill-buffer-hook ()
-  (ewm:message "#KILL HOOK")
-  (when (and (ewm:history-recordable-p (current-buffer))
-             (ewm:managed-p))
-    ;; killされたら履歴からも消す
-    (ewm:history-delete (current-buffer))
-    (ewm:pst-show-history-main)))
-
-;; set-window-configuration 対策
-;; いろいろ試行錯誤中。
-
-(defun ewm:debug-windows (wm)
-  (ewm:message " # WINDOWS : %s" 
-               (loop for winfo in (wlf:wset-winfo-list wm)
-                     collect (wlf:window-window winfo))))
-
-;;ewm:$wcfg ウインドウ配置構造体
-;; wcfg  : 本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
-;; pst   : パースペクティブのインスタンスのコピー
-;; count : デバッグ用カウンタ
-(defstruct ewm:$wcfg wcfg pst count)
-
-(defun ewm:override-custom-wcfg-p (cfg)
-  (ewm:$wcfg-p cfg))
-
-(defvar ewm:override-window-cfg-change-now nil) ; ewm:override-window-cfg-change 実行中ならt。再帰呼び出しを防ぐ。
-
-(defun ewm:override-window-cfg-change ()
-  ;; window-configuration-change-hook関数
-  (when (and (ewm:managed-p) ; ewm管理中で
-             (null ewm:override-window-cfg-change-now) ; 初回実行で
-             (= (minibuffer-depth) 0) ; ミニバッファ実行中でなくて
-             (and ewm:override-window-cfg-backup ; 補完前のウインドウ配置が空でなくて
-                  (not (compare-window-configurations ; 配置が違ってたら
-                        ewm:override-window-cfg-backup 
-                        (current-window-configuration)))))
-    (setq ewm:override-window-cfg-change-now t)
-    (unwind-protect
-        (ewm:override-restore-window-cfg) ; 配置を戻す
-      (setq ewm:override-window-cfg-change-now nil))))
-
-(defun ewm:override-setup-completion ()
-  ;;completionバッファが終了したとき、set-window-configurationが呼ばれずに
-  ;;window配置が元に戻される。なので、completionから戻ったときには
-  ;;windwo-configuration-change-hookを捕まえて自前で
-  ;;window配置を直すようにする。
-  (when (and (ewm:managed-p) (null ewm:override-window-cfg-backup))
-    (ewm:message "#OVERRIDE-SETUP-COMPLETION")
-    ;;(ewm:debug-windows (ewm:pst-get-wm))
-    (setq ewm:override-window-cfg-backup 
-          (current-window-configuration))))
-
-(defvar ewm:override-window-cfg-backup nil "[internal] Backup window configuration.")
-
-(defun ewm:override-restore-window-cfg ()
-  (interactive)
-  (when ewm:override-window-cfg-backup
-    (ewm:message "#RESTORE-WINDOW-CFG")
-    (set-window-configuration ewm:override-window-cfg-backup)
-    (setq ewm:override-window-cfg-backup nil)
-    (let ((i (ewm:pst-get-instance)))
-      (ewm:aif (ewm:$pst-main i)
-        (wlf:select (ewm:$pst-wm i) it)))))
-
-(defvar ewm:override-window-cfg-count 0 "[internal] Window configuration counter")
-
-(defadvice current-window-configuration (around ewm:ad-override)
-  (let ((cfg ad-do-it))
-    (incf ewm:override-window-cfg-count)
-    (ewm:message "#CURRENT-WINDOW-CONFIGURATION %s" 
-                 ewm:override-window-cfg-count)
-    (if (ewm:managed-p)
-        (let ((data (ewm:pst-copy-instance)))
-          (setq ad-return-value
-                (make-ewm:$wcfg :wcfg cfg :pst data 
-                      :count ewm:override-window-cfg-count))))))
-
-(defadvice window-configuration-p (around ewm:ad-override-long (cfg))
-  (setq ad-return-value (or (ewm:override-custom-wcfg-p cfg) ad-do-it)))
-
-(defadvice window-configuration-frame (around ewm:ad-override-long (cfg))
-  (when (ewm:override-custom-wcfg-p cfg)
-    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg)))
-  ad-do-it)
-
-(defadvice compare-window-configurations (around ewm:ad-override-long (cfg1 cfg2))
-  (when (ewm:override-custom-wcfg-p cfg1)
-    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg1)))
-  (when (ewm:override-custom-wcfg-p cfg2)
-    (ad-set-arg 1 (ewm:$wcfg-wcfg cfg2)))
-  ad-do-it
-  (when (and ad-return-value (ewm:managed-p))
-    (ewm:message "#COMPARE-WINDOW-CONFIGURATIONS = %s" ad-return-value)
-    ;;(ewm:debug-windows (ewm:pst-get-wm))
-    ))
-
-(defadvice set-window-configuration (around ewm:ad-override-long (cfg))
-  (ewm:message "#SET-WINDOW-CONFIGURATION -->")
-  (cond 
-   ((ewm:override-custom-wcfg-p cfg)
-    ;;管理対象であればwindowオブジェクトを元に戻す
-    (let ((pst-instance (ewm:$wcfg-pst cfg))
-          (count (ewm:$wcfg-count cfg)))
-      (ad-set-arg 0 (ewm:$wcfg-wcfg cfg))
-      (ewm:message "#SET-WINDOW-CONFIGURATION (ad-do-it)")
-      ad-do-it
-      ;;(ewm:debug-windows (ewm:$pst-wm pst-instance))
-      (when ewm:pst-minor-mode
-        (cond
-         ((ewm:managed-p)
-          ;;(ewm:message "#AD-SET-WINDOW-CONFIGURATION SET %s" pst-instance)
-          (ewm:message "#AD-SET-WINDOW-CONFIGURATION SET %s" count)
-          (ewm:pst-set-instance pst-instance))
-         (t
-          (ewm:message "#AD-SET-WINDOW-CONFIGURATION RESUME %s" pst-instance)
-          (ewm:pst-set-instance pst-instance)
-          (ewm:pst-resume pst-instance))))))
-   (t
-    ;;管理してない配置の場合はパースペクティブを無効にする
-    (when (ewm:managed-p)
-      (ewm:message "#AD-SET-WINDOW-CONFIGURATION FINISH")
-      (ewm:pst-finish)
-      (ewm:pst-set-instance nil))
-    ad-do-it))
-  (ewm:message "#SET-WINDOW-CONFIGURATION <-- %s" ad-return-value))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Framework
 
 (defvar ewm:pst-list nil "[internal] Perspective class registory.")
@@ -812,6 +618,17 @@ from the given string."
         (ewm:message "#PREV-PST : %s" it)
         (ewm:pst-change it))))
 
+;;全パースペクティブに共通なキーマップ定義
+;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (ewm:pst-change)
+(defvar ewm:pst-minor-mode-keymap
+      (ewm:define-keymap
+       '(("prefix Q"   . ewm:stop-management)
+         ("prefix l"   . ewm:pst-update-windows-command)
+         ("prefix n"   . ewm:pst-history-forward-command)
+         ("prefix p"   . ewm:pst-history-back-command)
+         ("prefix <DEL>" . ewm:pst-change-prev-pst-command)
+         ) ewm:prefix-key))
+
 (defun ewm:pst-change-keymap (new-keymap)
   (let ((map (copy-keymap
               (or new-keymap ewm:pst-minor-mode-keymap))))
@@ -936,17 +753,6 @@ from the given string."
     (ewm:history-back)
     (ewm:pst-show-history-main)))
 
-;;全パースペクティブに共通なキーマップ定義
-;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (ewm:pst-change)
-(defvar ewm:pst-minor-mode-keymap
-      (ewm:define-keymap
-       '(("prefix Q"   . ewm:stop-management)
-         ("prefix l"   . ewm:pst-update-windows-command)
-         ("prefix n"   . ewm:pst-history-forward-command)
-         ("prefix p"   . ewm:pst-history-back-command)
-         ("prefix <DEL>" . ewm:pst-change-prev-pst-command)
-         ) ewm:prefix-key))
-
 (defvar ewm:pst-minor-mode-hook nil)
 
 (defvar ewm:pst-minor-mode nil) ; dummy
@@ -1015,6 +821,199 @@ from the given string."
              (pos (position now pset)))
         (ewm:aand pos (nth (1- it) pset)
                   (ewm:pst-change it)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ### Advices / Overriding Functions
+
+(defvar ewm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
+
+(defmacro ewm:with-advice (&rest body)
+  ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
+  ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
+  ;;本来の動きにしたい場合はこのマクロで囲む。
+  `(if ewm:ad-now-overriding
+       (progn ,@body) ; 再帰している場合
+     (setq ewm:ad-now-overriding t) ; 初回
+     (unwind-protect 
+         (progn ,@body) 
+       (setq ewm:ad-now-overriding nil))))
+
+(defadvice switch-to-buffer (around
+                             ewm:ad-override
+                             (buf &optional norecord))
+  (ewm:message "#SWITCH-TO-BUFFER %s" buf)
+  (let (overrided)
+    (when (and buf 
+               (not ewm:ad-now-overriding) ; 再入してなくて
+               (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
+      (ewm:with-advice
+       (ewm:message "#AD-SWITCH-TO-BUFFER %s" buf)
+       (ewm:history-add buf)
+       (setq overrided (ewm:pst-switch-to-buffer (get-buffer-create buf)))))
+    (if overrided
+        (progn
+          (set-buffer buf))
+      ad-do-it) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
+    buf))
+
+(defadvice pop-to-buffer (around 
+                          ewm:ad-override
+                          (buf &optional other-window norecord))
+  (ewm:message "#POP-TO-BUFFER %s" buf)
+  (let (overrided)
+    (when (and buf 
+               (not ewm:ad-now-overriding) ; 再入してなくて
+               (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
+      (ewm:with-advice
+       (ewm:message "#AD-POP-TO-BUFFER %s" buf)
+       (ewm:history-add buf)
+       (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
+    (if overrided
+        (progn (set-buffer buf) buf)
+      ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
+
+(defun ewm:override-special-display-function (buf &optional args)
+  (ewm:message "#SPECIAL-DISPLAY-FUNC %s" buf)
+  (let (overrided)
+    (when (and 
+           buf 
+           (not ewm:ad-now-overriding) ; 再入してなくて
+           (ewm:managed-p)) ; 管理対象フレームの場合は乗っ取る
+      (ewm:with-advice
+       (ewm:message "#AD-SPECIAL-DISPLAY-FUNC %s" buf)
+       (ewm:history-add buf)
+       (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
+    (if overrided
+        (progn (set-buffer buf) (get-buffer-window buf))
+      (ewm:message "#DISPLAY-BUFFER ") ;;適当な場所に表示する
+      (set-window-buffer (selected-window) buf)
+      (set-buffer buf) (selected-window) 
+      )))
+
+(defun ewm:kill-buffer-hook ()
+  (ewm:message "#KILL HOOK")
+  (when (and (ewm:history-recordable-p (current-buffer))
+             (ewm:managed-p))
+    ;; killされたら履歴からも消す
+    (ewm:history-delete (current-buffer))
+    (ewm:pst-show-history-main)))
+
+;; set-window-configuration 対策
+;; いろいろ試行錯誤中。
+
+(defun ewm:debug-windows (wm)
+  (ewm:message " # WINDOWS : %s" 
+               (loop for winfo in (wlf:wset-winfo-list wm)
+                     collect (wlf:window-window winfo))))
+
+;;ewm:$wcfg ウインドウ配置構造体
+;; wcfg  : 本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
+;; pst   : パースペクティブのインスタンスのコピー
+;; count : デバッグ用カウンタ
+(defstruct ewm:$wcfg wcfg pst count)
+
+(defun ewm:override-custom-wcfg-p (cfg)
+  (ewm:$wcfg-p cfg))
+
+(defvar ewm:override-window-cfg-change-now nil) ; ewm:override-window-cfg-change 実行中ならt。再帰呼び出しを防ぐ。
+(defvar ewm:override-window-cfg-backup nil "[internal] Backup window configuration.")
+
+(defun ewm:override-window-cfg-change ()
+  ;; window-configuration-change-hook関数
+  (when (and (ewm:managed-p) ; ewm管理中で
+             (null ewm:override-window-cfg-change-now) ; 初回実行で
+             (= (minibuffer-depth) 0) ; ミニバッファ実行中でなくて
+             (and ewm:override-window-cfg-backup ; 補完前のウインドウ配置が空でなくて
+                  (not (compare-window-configurations ; 配置が違ってたら
+                        ewm:override-window-cfg-backup 
+                        (current-window-configuration)))))
+    (setq ewm:override-window-cfg-change-now t)
+    (unwind-protect
+        (ewm:override-restore-window-cfg) ; 配置を戻す
+      (setq ewm:override-window-cfg-change-now nil))))
+
+(defun ewm:override-setup-completion ()
+  ;;completionバッファが終了したとき、set-window-configurationが呼ばれずに
+  ;;window配置が元に戻される。なので、completionから戻ったときには
+  ;;windwo-configuration-change-hookを捕まえて自前で
+  ;;window配置を直すようにする。
+  (when (and (ewm:managed-p) (null ewm:override-window-cfg-backup))
+    (ewm:message "#OVERRIDE-SETUP-COMPLETION")
+    ;;(ewm:debug-windows (ewm:pst-get-wm))
+    (setq ewm:override-window-cfg-backup 
+          (current-window-configuration))))
+
+(defun ewm:override-restore-window-cfg ()
+  (interactive)
+  (when ewm:override-window-cfg-backup
+    (ewm:message "#RESTORE-WINDOW-CFG")
+    (set-window-configuration ewm:override-window-cfg-backup)
+    (setq ewm:override-window-cfg-backup nil)
+    (let ((i (ewm:pst-get-instance)))
+      (ewm:aif (ewm:$pst-main i)
+        (wlf:select (ewm:$pst-wm i) it)))))
+
+(defvar ewm:override-window-cfg-count 0 "[internal] Window configuration counter")
+
+(defadvice current-window-configuration (around ewm:ad-override)
+  (let ((cfg ad-do-it))
+    (incf ewm:override-window-cfg-count)
+    (ewm:message "#CURRENT-WINDOW-CONFIGURATION %s" 
+                 ewm:override-window-cfg-count)
+    (if (ewm:managed-p)
+        (let ((data (ewm:pst-copy-instance)))
+          (setq ad-return-value
+                (make-ewm:$wcfg :wcfg cfg :pst data 
+                      :count ewm:override-window-cfg-count))))))
+
+(defadvice window-configuration-p (around ewm:ad-override-long (cfg))
+  (setq ad-return-value (or (ewm:override-custom-wcfg-p cfg) ad-do-it)))
+
+(defadvice window-configuration-frame (around ewm:ad-override-long (cfg))
+  (when (ewm:override-custom-wcfg-p cfg)
+    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg)))
+  ad-do-it)
+
+(defadvice compare-window-configurations (around ewm:ad-override-long (cfg1 cfg2))
+  (when (ewm:override-custom-wcfg-p cfg1)
+    (ad-set-arg 0 (ewm:$wcfg-wcfg cfg1)))
+  (when (ewm:override-custom-wcfg-p cfg2)
+    (ad-set-arg 1 (ewm:$wcfg-wcfg cfg2)))
+  ad-do-it
+  (when (and ad-return-value (ewm:managed-p))
+    (ewm:message "#COMPARE-WINDOW-CONFIGURATIONS = %s" ad-return-value)
+    ;;(ewm:debug-windows (ewm:pst-get-wm))
+    ))
+
+(defadvice set-window-configuration (around ewm:ad-override-long (cfg))
+  (ewm:message "#SET-WINDOW-CONFIGURATION -->")
+  (cond 
+   ((ewm:override-custom-wcfg-p cfg)
+    ;;管理対象であればwindowオブジェクトを元に戻す
+    (let ((pst-instance (ewm:$wcfg-pst cfg))
+          (count (ewm:$wcfg-count cfg)))
+      (ad-set-arg 0 (ewm:$wcfg-wcfg cfg))
+      (ewm:message "#SET-WINDOW-CONFIGURATION (ad-do-it)")
+      ad-do-it
+      ;;(ewm:debug-windows (ewm:$pst-wm pst-instance))
+      (when ewm:pst-minor-mode
+        (cond
+         ((ewm:managed-p)
+          ;;(ewm:message "#AD-SET-WINDOW-CONFIGURATION SET %s" pst-instance)
+          (ewm:message "#AD-SET-WINDOW-CONFIGURATION SET %s" count)
+          (ewm:pst-set-instance pst-instance))
+         (t
+          (ewm:message "#AD-SET-WINDOW-CONFIGURATION RESUME %s" pst-instance)
+          (ewm:pst-set-instance pst-instance)
+          (ewm:pst-resume pst-instance))))))
+   (t
+    ;;管理してない配置の場合はパースペクティブを無効にする
+    (when (ewm:managed-p)
+      (ewm:message "#AD-SET-WINDOW-CONFIGURATION FINISH")
+      (ewm:pst-finish)
+      (ewm:pst-set-instance nil))
+    ad-do-it))
+  (ewm:message "#SET-WINDOW-CONFIGURATION <-- %s" ad-return-value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Framework
@@ -1224,11 +1223,12 @@ from the given string."
 (defun ewm:def-plugin-history-list-kill-command ()
   (interactive)
   (when (ewm:managed-p)
-    (save-excursion
-      (beginning-of-line)
-      (setq buf (get-text-property (point) 'ewm:buffer)))
-    (when (and buf (buffer-live-p buf))
-      (kill-buffer buf))))
+    (let (buf)
+      (save-excursion
+        (beginning-of-line)
+        (setq buf (get-text-property (point) 'ewm:buffer)))
+      (when (and buf (buffer-live-p buf))
+        (kill-buffer buf)))))
 
 (defun ewm:def-plugin-history-list-forward-command ()
   (interactive)
@@ -1249,12 +1249,13 @@ from the given string."
 (defun ewm:def-plugin-history-list-show-command ()
   (interactive)
   (when (ewm:managed-p)
-    (save-excursion
-      (beginning-of-line)
-      (setq buf (get-text-property (point) 'ewm:buffer)))
-    (when (and buf (buffer-live-p buf))
-      (ewm:history-add buf)
-      (ewm:pst-show-history-main))))
+    (let (buf)
+      (save-excursion
+        (beginning-of-line)
+        (setq buf (get-text-property (point) 'ewm:buffer)))
+      (when (and buf (buffer-live-p buf))
+        (ewm:history-add buf)
+        (ewm:pst-show-history-main)))))
 
 (ewm:plugin-register 'history-list 
                      "History List"
@@ -1741,6 +1742,10 @@ from the given string."
 ;;                ewm:def-plugin-files-sort-key
 ;;                ewm:def-plugin-files-hide-hidden-files
 
+(defvar ewm:def-plugin-files-dir nil "[internal buffer local]")
+(defvar ewm:def-plugin-files-sort-key nil "[internal buffer local]")
+(defvar ewm:def-plugin-files-hide-hidden-files nil "[internal buffer local]")
+ 
 (defun ewm:def-plugin-files (frame wm winfo)
   (let* ((buf (ewm:history-get-main-buffer))
          (wname (wlf:window-name winfo))
@@ -2770,6 +2775,9 @@ from the given string."
      :start  'ewm:dp-array-start
      :leave  'ewm:dp-array-leave))
 
+(defvar ewm:dp-array-buffers-function
+  'ewm:dp-array-get-recordable-buffers) ; この関数を切り替える
+
 (defun ewm:dp-array-init ()
   (let* 
       ((array-wm (ewm:dp-array-make-wm 
@@ -2804,9 +2812,6 @@ from the given string."
                 it ewm:c-blank-buffer))
         (incf cnt))
   wm)
-
-(defvar ewm:dp-array-buffers-function
-  'ewm:dp-array-get-recordable-buffers) ; この関数を切り替える
 
 (defun ewm:dp-array-get-recordable-buffers ()
   ;;履歴に記録しそうなもの一覧
