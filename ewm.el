@@ -73,9 +73,9 @@
 ;; 全体カスタマイズ / ewm:c-
 ;; 基本関数
 ;; 履歴管理 / ewm:history-
-;; アドバイス（switch-to-buffer, pop-to-bufferなど）
 ;; パースペクティブフレームワーク / ewm:pst-
 ;; パースペクティブセット / ewm:pstset-
+;; アドバイス（switch-to-buffer, pop-to-bufferなど）
 ;; プラグインフレームワーク / ewm:plugin-
 ;; メニュー / ewm:menu-
 ;; プラグイン定義 / ewm:def-plugin-
@@ -292,11 +292,11 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
 
-(defun ewm:frame-param-get (name)
-  (frame-parameter (selected-frame) name))  
+(defun ewm:frame-param-get (name &optional frame)
+  (frame-parameter (or frame (selected-frame)) name))
 
-(defun ewm:frame-param-set (name val)
-  (set-frame-parameter (selected-frame) name val))  
+(defun ewm:frame-param-set (name val &optional frame)
+  (set-frame-parameter (or frame (selected-frame)) name val))
 
 (defun ewm:document-buffer-p (buffer)
   (if (and buffer (buffer-live-p buffer))
@@ -397,9 +397,9 @@ from the given string."
   (ewm:aif (ewm:history-get)
       (car it) ewm:c-blank-buffer))
 
-(defun ewm:managed-p ()
+(defun ewm:managed-p (&optional frame)
   ;;このフレームがWMで管理対象かどうか
-  (ewm:pst-get-instance))
+  (ewm:pst-get-instance frame))
 
 (defun ewm:internal-buffer-p (buf)
   ;;ewmの管理バッファかどうか
@@ -527,8 +527,8 @@ from the given string."
 (defun ewm:$pst-super (pst)
   (ewm:$pst-class-extend (ewm:$pst-type pst)))
 
-(defun ewm:pst-get-instance ()
-  (ewm:frame-param-get 'ewm:pst))
+(defun ewm:pst-get-instance (&optional frame)
+  (ewm:frame-param-get 'ewm:pst frame))
 (defun ewm:pst-set-instance (pst-instance)
   (ewm:frame-param-set 'ewm:pst pst-instance))
 
@@ -764,7 +764,9 @@ from the given string."
   "Perspective mode"
   :init-value nil
   :global t
-  :lighter (:eval (format " Ewm(%s)" (ewm:$pst-name (ewm:pst-get-instance))))
+  :lighter (:eval (if (ewm:managed-p) 
+                      (format " Ewm(%s)" (ewm:$pst-name (ewm:pst-get-instance)))
+                    " Ewm(none)"))
   :keymap ewm:pst-minor-mode-keymap
   :group 'ewm:pst-mode
   (if ewm:pst-minor-mode
@@ -780,6 +782,40 @@ from the given string."
 (defun ewm:pst-minor-mode-abort ()
   ;;今のところ特になし
 )
+
+;;管理対象frameだけキーマップを有効にするアドバイス
+
+(defvar ewm:pst-minor-mode-keymap-backup nil "[internal]")
+(defvar ewm:pst-minor-mode-keymap-blank (make-sparse-keymap) "[internal]")
+
+(defun ewm:pst-minor-mode-disable-keymap ()
+  ;;グローバルマイナーモードは有効のままで、キーマップのみ無効にする
+  ;;特定のフレームで有効なキーマップというイメージ
+  (setq ewm:pst-minor-mode-keymap-backup ewm:pst-minor-mode-keymap)
+  (ewm:aif (assq 'ewm:pst-minor-mode minor-mode-map-alist)
+      (setf (cdr it) ewm:pst-minor-mode-keymap-blank)))
+
+(defun ewm:pst-minor-mode-enable-keymap ()
+  (ewm:aif (assq 'ewm:pst-minor-mode minor-mode-map-alist)
+      (setf (cdr it) ewm:pst-minor-mode-keymap-backup))
+  (setq ewm:pst-minor-mode-keymap-backup nil))
+
+(defun ewm:pst-minor-mode-switch-keymap (frame)
+  (cond
+   ((ewm:managed-p frame)
+    (ewm:pst-minor-mode-enable-keymap))
+   (t
+    (ewm:pst-minor-mode-disable-keymap))))
+
+(defadvice handle-switch-frame (around ewm:ad-override (event))
+  ad-do-it
+  (ewm:message "## FRAME SWITCH [%s] <- (%s)" event (selected-frame))
+  (when (eq 'switch-frame (car event))
+    (ewm:pst-minor-mode-switch-keymap (cadr event))))
+
+(defun ewm:override-after-make-frame (frame)
+  (ewm:message "## MAKE FRAME [%s] <- (%s)" frame (selected-frame))
+  (ewm:pst-minor-mode-switch-keymap frame))
 
 ;;; Perspective Set
 ;; 好みのパースペクティブのセットを作って選べるようにする
@@ -3062,6 +3098,7 @@ from the given string."
             'ewm:override-window-cfg-change)
   (add-hook 'completion-setup-hook 'ewm:override-setup-completion)
   (add-hook 'after-save-hook 'ewm:pst-after-save-hook)
+  (add-to-list 'after-make-frame-functions 'ewm:override-after-make-frame)
   (setq display-buffer-function 'ewm:override-special-display-function)
   (ad-activate-regexp "^ewm:ad-debug" t) ; debug
 
@@ -3090,6 +3127,8 @@ from the given string."
                  'ewm:override-window-cfg-change)
     (remove-hook 'completion-setup-hook 'ewm:override-setup-completion)
     (remove-hook 'after-save-hook 'ewm:pst-after-save-hook)
+    (setq after-make-frame-functions
+          (remove 'ewm:override-after-make-frame after-make-frame-functions))
     (setq display-buffer-function nil)
     (ad-deactivate-regexp "^ewm:ad-override$")
 
