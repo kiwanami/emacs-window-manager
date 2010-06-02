@@ -1786,6 +1786,23 @@ from the given string."
                      "Files"
                      'ewm:def-plugin-files)
 
+(defface ewm:face-files-main
+  '((t (:inherit font-lock-constant-face)))
+  "Face used for dired marks."
+  :group 'ewm-files)
+(defface ewm:face-files-symlink
+  '((t (:inherit font-lock-keyword-face)))
+  "Face used for symbolic links."
+  :group 'ewm-files)
+(defface ewm:face-files-directory
+  '((t (:inherit font-lock-function-name-face)))
+  "Face used for subdirectories."
+  :group 'ewm-files)
+(defface ewm:face-files-shadow
+  '((t (:inherit shadow)))
+  "Face used for files suffixed with `completion-ignored-extensions'."
+  :group 'ewm-files)
+
 (defun ewm:def-plugin-files-update-by-command()
   (interactive)
   ;;カレントバッファが対象のバッファである前提
@@ -1877,8 +1894,8 @@ from the given string."
           (push 
            (ewm:tp 
             (cond
-             ((stringp type) (ewm:rt fn 'dired-symlink))
-             (type (ewm:rt fn 'dired-directory))
+             ((stringp type) (ewm:rt fn 'ewm:face-files-symlink))
+             (type (ewm:rt fn 'ewm:face-files-directory))
              (t fn))
             'ewm:file
             (expand-file-name fn dir)) rows-file)
@@ -1905,8 +1922,8 @@ from the given string."
         with wtime = (ewm:max-length rows-time)
         with fmt = (format "%%-%is  %%%is  %%s\n" wfile wtime)
         for fn = (pop rows-file)
-        for tm = (ewm:rt (pop rows-time) 'dired-ignored)
-        for sz = (ewm:rt (pop rows-size) 'dired-ignored)
+        for tm = (ewm:rt (pop rows-time) 'ewm:face-files-shadow)
+        for sz = (ewm:rt (pop rows-size) 'ewm:face-files-shadow)
         do
         (insert 
          (format fmt fn tm sz))))
@@ -1928,8 +1945,8 @@ from the given string."
           with fmt = (format "%%-%is  %%%is  %%s\n" wfile wtime)
           with spc = (make-string 10 ?-)
           for fn = (pop rows-file)
-          for tm = (ewm:rt (pop rows-time) 'dired-mark)
-          for sz = (ewm:rt (pop rows-size) 'dired-ignored)
+          for tm = (ewm:rt (pop rows-time) 'ewm:face-files-main)
+          for sz = (ewm:rt (pop rows-size) 'ewm:face-files-shadow)
           for ftm = (nth 6 (pop rows))
           for splitter =
           (cond 
@@ -1948,7 +1965,7 @@ from the given string."
           do
           (when splitter
             (insert (ewm:rt (concat spc (format "- %s ---------\n" splitter))
-                            'dired-ignored)))
+                            'ewm:face-files-shadow)))
           (insert 
            (format fmt fn tm sz))
           (setq last-ftime ftm))))
@@ -1959,8 +1976,8 @@ from the given string."
         with wsize = (ewm:max-length rows-size)
         with fmt = (format "%%%is  %%-%is  %%s\n" wsize wfile)
         for fn = (pop rows-file)
-        for tm = (ewm:rt (pop rows-time) 'dired-ignored)
-        for sz = (ewm:rt (pop rows-size) 'dired-mark)
+        for tm = (ewm:rt (pop rows-time) 'ewm:face-files-shadow)
+        for sz = (ewm:rt (pop rows-size) 'ewm:face-files-main)
         do
         (insert 
          (format fmt sz fn tm))))
