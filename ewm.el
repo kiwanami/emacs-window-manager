@@ -3025,11 +3025,16 @@ from the given string."
         if (ewm:history-recordable-p bo)
         do (ewm:history-add bo)))
 
+(defvar ewm:pre-start-hook nil "")
+(defvar ewm:post-start-hook nil "")
+
 (defun ewm:start-management (&optional pstset)
   ;;現在のフレームの管理を開始
   (interactive)
   (setq ewm:save-window-configuration 
         (current-window-configuration))
+
+  (run-hooks 'ewm:pre-start-hook)
 
   (ewm:history-add-loaded-buffers) ; 全部つっこむ
   (ewm:history-save-backup nil)
@@ -3048,7 +3053,11 @@ from the given string."
   (ewm:pst-set-prev-pst nil)
   (ewm:pst-change (car (ewm:pstset-get-current-pstset))) ; 先頭をメインとする
   (ewm:pst-minor-mode 1)
-  (ewm:menu-define))
+  (ewm:menu-define)
+
+  (run-hooks 'ewm:post-start-hook))
+
+(defvar ewm:post-stop-hook nil "")
 
 (defun ewm:stop-management ()
   ;;現在のフレームの管理を終了
@@ -3069,7 +3078,8 @@ from the given string."
     (ad-deactivate-regexp "^ewm:ad-debug") ; debug
 
     (ewm:aif ewm:save-window-configuration
-        (set-window-configuration it))))
+        (set-window-configuration it))
+    (run-hooks 'ewm:post-stop-hook)))
 
 ;; for dev
 ;; (progn (setq ewm:debug t) (toggle-debug-on-error))
