@@ -1794,7 +1794,8 @@ from the given string."
         (progn
           (setq buffer-read-only nil)
           (erase-buffer)
-          (ewm:def-plugin-files-update-buffer ewm:def-plugin-files-dir))
+          (ewm:def-plugin-files-update-buffer ewm:def-plugin-files-dir)
+          (goto-char (point-min)))
       (setq buffer-read-only t))))
 
 (defun ewm:def-plugin-files-sort (records order)
