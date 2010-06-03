@@ -1881,7 +1881,7 @@ from the given string."
 
 (defface ewm:face-files-main
   '((t (:inherit font-lock-constant-face)))
-  "Face used for dired marks."
+  "Face used for main info."
   :group 'ewm-files)
 (defface ewm:face-files-symlink
   '((t (:inherit font-lock-keyword-face)))
@@ -1893,7 +1893,7 @@ from the given string."
   :group 'ewm-files)
 (defface ewm:face-files-shadow
   '((t (:inherit shadow)))
-  "Face used for files suffixed with `completion-ignored-extensions'."
+  "Face used for shadowed info."
   :group 'ewm-files)
 
 (defun ewm:def-plugin-files-update-by-command()
