@@ -776,11 +776,16 @@ from the given string."
     (ewm:pst-minor-mode-abort)))
 
 (defun ewm:pst-minor-mode-setup ()
-  ;;今のところ特になし
+  (add-to-list 'after-make-frame-functions 'ewm:override-after-make-frame)
+  (ad-activate-regexp "^ewm:ad-frame-override$" t)
+  (ewm:pst-minor-mode-enable-frame)
 )
 
 (defun ewm:pst-minor-mode-abort ()
-  ;;今のところ特になし
+  (setq after-make-frame-functions
+        (remove 'ewm:override-after-make-frame after-make-frame-functions))
+  (ad-deactivate-regexp "^ewm:ad-frame-override$")
+  (ewm:pst-minor-mode-disable-frame)
 )
 
 ;;管理対象frameだけキーマップを有効にするアドバイス
@@ -788,34 +793,62 @@ from the given string."
 (defvar ewm:pst-minor-mode-keymap-backup nil "[internal]")
 (defvar ewm:pst-minor-mode-keymap-blank (make-sparse-keymap) "[internal]")
 
-(defun ewm:pst-minor-mode-disable-keymap ()
-  ;;グローバルマイナーモードは有効のままで、キーマップのみ無効にする
-  ;;特定のフレームで有効なキーマップというイメージ
+(defun ewm:pst-minor-mode-disable-frame ()
+  (ewm:message "## PST MM DISABLED")
+  ;;グローバルマイナーモードは有効のままで、アドバイス、キーマップのみ無効にする
+  ;;特定のフレームで有効というイメージ
   (setq ewm:pst-minor-mode-keymap-backup ewm:pst-minor-mode-keymap)
   (ewm:aif (assq 'ewm:pst-minor-mode minor-mode-map-alist)
-      (setf (cdr it) ewm:pst-minor-mode-keymap-blank)))
+      (setf (cdr it) ewm:pst-minor-mode-keymap-blank))
 
-(defun ewm:pst-minor-mode-enable-keymap ()
+  (remove-hook 'kill-buffer-hook 'ewm:kill-buffer-hook)
+  (remove-hook 'window-configuration-change-hook 
+               'ewm:override-window-cfg-change)
+  (remove-hook 'completion-setup-hook 'ewm:override-setup-completion)
+  (remove-hook 'after-save-hook 'ewm:pst-after-save-hook)
+  (setq display-buffer-function nil)
+  (ad-deactivate-regexp "^ewm:ad-override$"))
+
+(defun ewm:pst-minor-mode-enable-frame ()
+  (ewm:message "## PST MM ENABLED")
   (ewm:aif (assq 'ewm:pst-minor-mode minor-mode-map-alist)
       (setf (cdr it) ewm:pst-minor-mode-keymap-backup))
-  (setq ewm:pst-minor-mode-keymap-backup nil))
+  (setq ewm:pst-minor-mode-keymap-backup nil)
 
-(defun ewm:pst-minor-mode-switch-keymap (frame)
+  (ad-activate-regexp "^ewm:ad-override" t)
+  (add-hook 'kill-buffer-hook 'ewm:kill-buffer-hook)
+  (add-hook 'window-configuration-change-hook
+            'ewm:override-window-cfg-change)
+  (add-hook 'completion-setup-hook 'ewm:override-setup-completion)
+  (add-hook 'after-save-hook 'ewm:pst-after-save-hook)
+  (setq display-buffer-function 'ewm:override-special-display-function))
+
+(defun ewm:pst-minor-mode-switch-frame (frame)
+  (ewm:message "## PST MM SWITCH [%s] / %s" (ewm:managed-p frame) frame)
   (cond
    ((ewm:managed-p frame)
-    (ewm:pst-minor-mode-enable-keymap))
+    (ewm:pst-minor-mode-enable-frame))
    (t
-    (ewm:pst-minor-mode-disable-keymap))))
+    (ewm:pst-minor-mode-disable-frame))))
 
-(defadvice handle-switch-frame (around ewm:ad-override (event))
+(defadvice handle-switch-frame (around ewm:ad-frame-override (event))
   ad-do-it
   (ewm:message "## FRAME SWITCH [%s] <- (%s)" event (selected-frame))
   (when (eq 'switch-frame (car event))
-    (ewm:pst-minor-mode-switch-keymap (cadr event))))
+    (ewm:pst-minor-mode-switch-frame (cadr event))))
 
 (defun ewm:override-after-make-frame (frame)
   (ewm:message "## MAKE FRAME [%s] <- (%s)" frame (selected-frame))
-  (ewm:pst-minor-mode-switch-keymap frame))
+  (ewm:pst-minor-mode-switch-frame frame))
+
+(defadvice handle-delete-frame (around ewm:ad-frame-override (event))
+  (ewm:message "## 1 FRAME DELETE [%s] " event)
+  (let* ((frame (car (cadr event)))
+         (next-frame (next-frame frame)))
+    (ewm:message "## 2 FRAME DELETE [%s] -> (%s)" frame next-frame)
+    (ewm:pst-minor-mode-switch-frame next-frame)
+    (select-frame next-frame))
+  ad-do-it)
 
 ;;; Perspective Set
 ;; 好みのパースペクティブのセットを作って選べるようにする
@@ -888,9 +921,9 @@ from the given string."
        (setq overrided (ewm:pst-switch-to-buffer (get-buffer-create buf)))))
     (if overrided
         (progn
-          (set-buffer buf))
-      ad-do-it) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
-    buf))
+          (set-buffer buf)
+          (setq ad-return-value buf))
+      ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defadvice pop-to-buffer (around 
                           ewm:ad-override
@@ -905,7 +938,9 @@ from the given string."
        (ewm:history-add buf)
        (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
     (if overrided
-        (progn (set-buffer buf) buf)
+        (progn 
+          (set-buffer buf)
+          (setq ad-return-value buf))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defun ewm:override-special-display-function (buf &optional args)
@@ -920,10 +955,20 @@ from the given string."
        (ewm:history-add buf)
        (setq overrided (ewm:pst-pop-to-buffer (get-buffer-create buf)))))
     (if overrided
-        (progn (set-buffer buf) (get-buffer-window buf))
-      (ewm:message "#DISPLAY-BUFFER ") ;;適当な場所に表示する
-      (set-window-buffer (selected-window) buf)
-      (set-buffer buf) (selected-window) 
+        (progn 
+          (set-buffer buf)
+          (get-buffer-window buf)) ;return value
+      (cond
+       ((ewm:managed-p)
+        (ewm:message "#DISPLAY-BUFFER / managed frame") ;;適当な場所に表示する
+        (set-window-buffer (selected-window) buf)
+        (set-buffer buf) 
+        (selected-window)) ;return value
+       (t
+        (ewm:message "#DISPLAY-BUFFER / Non managed frame ") ;;適当な場所に表示する
+        (ewm:with-advice
+         (let (special-display-function)
+           (display-buffer buf))))) ;return value
       )))
 
 (defun ewm:kill-buffer-hook ()
@@ -3092,14 +3137,8 @@ from the given string."
 
   (ewm:history-add-loaded-buffers) ; 全部つっこむ
   (ewm:history-save-backup nil)
-  (ad-activate-regexp "^ewm:ad-override" t)
-  (add-hook 'kill-buffer-hook 'ewm:kill-buffer-hook)
-  (add-hook 'window-configuration-change-hook
-            'ewm:override-window-cfg-change)
-  (add-hook 'completion-setup-hook 'ewm:override-setup-completion)
-  (add-hook 'after-save-hook 'ewm:pst-after-save-hook)
-  (add-to-list 'after-make-frame-functions 'ewm:override-after-make-frame)
-  (setq display-buffer-function 'ewm:override-special-display-function)
+
+  (ewm:pst-minor-mode 1)
   (ad-activate-regexp "^ewm:ad-debug" t) ; debug
 
   (if pstset
@@ -3107,7 +3146,6 @@ from the given string."
     (ewm:pstset-defaults)) ; 全部使う
   (ewm:pst-set-prev-pst nil)
   (ewm:pst-change (car (ewm:pstset-get-current-pstset))) ; 先頭をメインとする
-  (ewm:pst-minor-mode 1)
   (ewm:menu-define)
 
   (run-hooks 'ewm:post-start-hook))
@@ -3122,16 +3160,6 @@ from the given string."
     (ewm:pst-minor-mode -1)
     (ewm:pst-set-prev-pst nil)
 
-    (remove-hook 'kill-buffer-hook 'ewm:kill-buffer-hook)
-    (remove-hook 'window-configuration-change-hook 
-                 'ewm:override-window-cfg-change)
-    (remove-hook 'completion-setup-hook 'ewm:override-setup-completion)
-    (remove-hook 'after-save-hook 'ewm:pst-after-save-hook)
-    (setq after-make-frame-functions
-          (remove 'ewm:override-after-make-frame after-make-frame-functions))
-    (setq display-buffer-function nil)
-    (ad-deactivate-regexp "^ewm:ad-override$")
-
     (ad-deactivate-regexp "^ewm:ad-debug") ; debug
 
     (ewm:aif ewm:save-window-configuration
@@ -3140,7 +3168,6 @@ from the given string."
 
 ;; for dev
 ;; (progn (setq ewm:debug t) (toggle-debug-on-error))
-;; (define-key ewm:pst-minor-mode-keymap (kbd "C-c ; C-m") 'ewm:message-mark)
 ;; (progn (kill-buffer (get-buffer-create "*ewm:debug*")) (eval-current-buffer) (ewm:start-management))
 ;; (ewm:stop-management)
 
