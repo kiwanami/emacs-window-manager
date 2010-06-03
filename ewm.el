@@ -3,7 +3,7 @@
 ;; Copyright (C) 2010  SAKURAI Masashi
 
 ;; Author: SAKURAI Masashi <m.sakurai atmark kiwanami.net>
-;; Version: 1.0
+;; Version: 1.1
 ;; Keywords: tools, window manager
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -86,6 +86,18 @@
 ;;   dashboard / ewm:dp-dashboard-
 ;;   array / ewm:dp-array-
 ;; 全体制御
+
+;;; 更新履歴
+
+;; Revision 1.1  2010/06/04  sakurai
+;; 未宣言の変数のバグ修正
+;; 管理開始、終了用hook追加
+;; filesのソートでキャレットが頭にくるように修正
+;; filesのfaceを自前で用意するように修正
+;; 複数フレーム対応。
+;;
+;; Revision 1.0  2010/05/28  sakurai
+;; 初回リリース
 
 ;;; Code:
 
