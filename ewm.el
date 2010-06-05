@@ -864,8 +864,7 @@ from the given string."
 
 (defadvice other-frame (after ewm:ad-frame-override)
   (ewm:message "## OTHER FRAME [%s] " (selected-frame))
-  (ewm:pst-minor-mode-switch-frame (selected-frame))
-  )
+  (ewm:pst-minor-mode-switch-frame (selected-frame)))
 
 ;;; Perspective Set
 ;; 好みのパースペクティブのセットを作って選べるようにする
@@ -3147,25 +3146,30 @@ from the given string."
 (defun ewm:start-management (&optional pstset)
   ;;現在のフレームの管理を開始
   (interactive)
-  (setq ewm:save-window-configuration 
-        (current-window-configuration))
 
-  (run-hooks 'ewm:pre-start-hook)
+  (cond
+   (ewm:pst-minor-mode
+    (message "Ewm has already started."))
+   (t
+    (setq ewm:save-window-configuration 
+          (current-window-configuration))
 
-  (ewm:history-add-loaded-buffers) ; 全部つっこむ
-  (ewm:history-save-backup nil)
+    (run-hooks 'ewm:pre-start-hook)
 
-  (ewm:pst-minor-mode 1)
-  (ad-activate-regexp "^ewm:ad-debug" t) ; debug
+    (ewm:history-add-loaded-buffers) ; 全部つっこむ
+    (ewm:history-save-backup nil)
 
-  (if pstset
-      (ewm:pstset-define pstset)
-    (ewm:pstset-defaults)) ; 全部使う
-  (ewm:pst-set-prev-pst nil)
-  (ewm:pst-change (car (ewm:pstset-get-current-pstset))) ; 先頭をメインとする
-  (ewm:menu-define)
+    (ewm:pst-minor-mode 1)
+    (ad-activate-regexp "^ewm:ad-debug" t) ; debug
 
-  (run-hooks 'ewm:post-start-hook))
+    (if pstset
+        (ewm:pstset-define pstset)
+      (ewm:pstset-defaults)) ; 全部使う
+    (ewm:pst-set-prev-pst nil)
+    (ewm:pst-change (car (ewm:pstset-get-current-pstset))) ; 先頭をメインとする
+    (ewm:menu-define)
+
+    (run-hooks 'ewm:post-start-hook))))
 
 (defvar ewm:post-stop-hook nil "")
 
