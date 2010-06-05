@@ -862,6 +862,11 @@ from the given string."
     (select-frame next-frame))
   ad-do-it)
 
+(defadvice other-frame (after ewm:ad-frame-override)
+  (ewm:message "## OTHER FRAME [%s] " (selected-frame))
+  (ewm:pst-minor-mode-switch-frame (selected-frame))
+  )
+
 ;;; Perspective Set
 ;; 好みのパースペクティブのセットを作って選べるようにする
 
