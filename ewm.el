@@ -1153,6 +1153,18 @@ from the given string."
             (funcall (ewm:$plugin-update plugin) frame wm winfo)
           (nil (ewm:message "Plugin Error %s [%s]" plugin-name err)))))
 
+(defun ewm:plugin-exec-update-by-plugin-name (frame wm exec-plugin-name)
+  ;;指定のプラグインだけを実行（プラグインから更新のために呼ばれる）
+  (loop for winfo in (wlf:wset-winfo-list wm)
+        for plugin-name = (wlf:window-option-get winfo :plugin)
+        for plugin = (ewm:plugin-get plugin-name)
+        if (and (wlf:window-live-window winfo) plugin
+                (eq exec-plugin-name plugin-name))
+        do 
+        (condition-case err
+            (funcall (ewm:$plugin-update plugin) frame wm winfo)
+          (nil (ewm:message "Plugin Error %s [%s]" plugin-name err)))))
+
 (defun ewm:plugin-switch (plugin-name)
   ;;現在選択されているウインドウのプラグインを取り替える
   (let* ((wm (ewm:pst-get-wm))
@@ -1257,12 +1269,23 @@ from the given string."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
 
+(defface ewm:face-history-list-normal
+  '((t :foreground "DarkSlateBlue"))
+  "Face for ewm history list." :group 'ewm)
+(defface ewm:face-history-list-select1
+  '((t :foreground "OrangeRed" :background "Lightsteelblue1"))
+  "Face for ewm history list." :group 'ewm)
+(defface ewm:face-history-list-select2
+  '((t :foreground "Blue" :background "WhiteSmoke"))
+  "Face for ewm history list." :group 'ewm)
+
 ;;; history-list / バッファ・履歴一覧
 ;;;--------------------------------------------------
 
 (defun ewm:def-plugin-history-list (frame wm winfo)
   (let ((wname (wlf:window-name winfo))
-        (buf (get-buffer " *WM:History*")))
+        (win (wlf:window-live-window winfo))
+        (buf (get-buffer " *WM:History*")) current-pos)
     (unless (and buf (buffer-live-p buf))
       (setq buf (get-buffer-create " *WM:History*"))
       (with-current-buffer buf
@@ -1279,31 +1302,29 @@ from the given string."
             (let ((history (ewm:history-get))
                   (history-backup (reverse (ewm:history-get-backup)))
                   (cnt 1))
-              (loop for h in history-backup
+              (loop for h in (append history-backup history)
+                    with main-buf = (car history)
                     for name = (if (stringp h) h (buffer-name h))
                     do (insert 
-                        (ewm:tp (format
-                                 "%3s %s %s\n" cnt name 
-                                 (if (buffer-modified-p h) "*" ""))
-                                'ewm:buffer h))
-                    (incf cnt))
-              (loop for h in history
-                    for name = (if (stringp h) h (buffer-name h))
-                    do (insert 
-                        (ewm:tp (format 
-                                 "%3s %s %s\n" cnt name 
-                                 (if (buffer-modified-p h) "*" ""))
-                                'ewm:buffer h))
+                        (ewm:tp 
+                         (ewm:rt 
+                          (format
+                           "%3s %s %s\n" cnt name 
+                           (if (buffer-modified-p h) "*" ""))
+                          (if (eql h main-buf) 'ewm:face-history-list-select1
+                            'ewm:face-history-list-normal))
+                         'ewm:buffer h))
                     (incf cnt))
               (goto-line (1+ (length history-backup)))
+              (setq current-pos (point))
               (setq mode-line-format 
                     '("-" mode-line-mule-info
                       " " mode-line-position "-%-"))
               (setq header-line-format
-                    (format "Buffer History [%i]" (1- cnt))))
-            (hl-line-highlight))
+                    (format "Buffer History [%i]" (1- cnt)))))
         (setq buffer-read-only t)))
-    (wlf:set-buffer wm wname buf)))
+    (wlf:set-buffer wm wname buf)
+    (when win (set-window-point win current-pos))))
 
 (defvar ewm:def-plugin-history-list-mode-map 
   (ewm:define-keymap 
@@ -1357,6 +1378,101 @@ from the given string."
 (ewm:plugin-register 'history-list 
                      "History List"
                      'ewm:def-plugin-history-list)
+
+;;; history-list2 / バッファ・履歴一覧 (two用)
+;;;--------------------------------------------------
+
+(defun ewm:def-plugin-history-list2-get-second-buffer (wm)
+  ;; pluginがprev-mainかhistory-nthのwindowのバッファを取ってくる
+  (loop for winfo in (wlf:wset-winfo-list wm)
+        for plugin-name = (wlf:window-option-get winfo :plugin)
+        if (and (wlf:window-live-window winfo) plugin-name
+                (memq plugin-name '(history-nth main-prev)))
+        return (wlf:get-buffer wm (wlf:window-name winfo))))
+
+(defun ewm:def-plugin-history-list2 (frame wm winfo)
+  (let ((wname (wlf:window-name winfo))
+        (win (wlf:window-live-window winfo))
+        (buf (get-buffer " *WM:History2*")) current-pos)
+    (unless (and buf (buffer-live-p buf))
+      (setq buf (get-buffer-create " *WM:History2*"))
+      (with-current-buffer buf
+        (ewm:def-plugin-history-list2-mode)
+        (setq buffer-read-only t)
+        (buffer-disable-undo buf)
+        (hl-line-mode 1)))
+    (with-current-buffer buf
+      (unwind-protect
+          (progn
+            (setq buffer-read-only nil)
+            (erase-buffer)
+            (goto-char (point-min))
+            (let* ((history (ewm:history-get))
+                   (history-backup (reverse (ewm:history-get-backup)))
+                   (main-buf (car history))
+                   (second-buf (ewm:def-plugin-history-list2-get-second-buffer wm))
+                   (cnt 1))
+              (loop for h in (append history-backup history)
+                    for name = (if (stringp h) h (buffer-name h))
+                    do (insert 
+                        (ewm:tp 
+                         (ewm:rt 
+                          (format
+                           "%2s%2s %2s %s %s\n" 
+                           (if (eql h main-buf) "<-" "")
+                           (if (eql h second-buf) "->" "")
+                           cnt name 
+                           (if (buffer-modified-p h) "*" ""))
+                          (cond
+                           ((eql h main-buf) 'ewm:face-history-list-select1)
+                           ((eql h second-buf) 'ewm:face-history-list-select2)
+                           (t
+                            'ewm:face-history-list-normal)))
+                         'ewm:buffer h))
+                    (incf cnt))
+              (goto-line (1+ (length history-backup)))
+              (setq current-pos (point))
+              (setq mode-line-format 
+                    '("-" mode-line-mule-info
+                      " " mode-line-position "-%-"))
+              (setq header-line-format
+                    (format "Buffer History [%i]" (1- cnt)))))
+        (setq buffer-read-only t)))
+    (wlf:set-buffer wm wname buf)
+    (when win (set-window-point win current-pos))))
+
+(defvar ewm:def-plugin-history-list2-mode-map 
+  (ewm:define-keymap 
+   '(("k" . previous-line)
+     ("j" . next-line)
+     ("d" . ewm:def-plugin-history-list-kill-command)
+     ("<SPC>" . ewm:def-plugin-history-list2-show-command)
+     ("C-m"   . ewm:def-plugin-history-list-select-command)
+     ("q"     . ewm:pst-window-select-main-command)
+     )))
+
+(define-derived-mode ewm:def-plugin-history-list2-mode fundamental-mode "History")
+
+(defun ewm:def-plugin-history-list2-show-command ()
+  (interactive)
+  (when (ewm:managed-p)
+    (let (buf)
+      (save-excursion
+        (beginning-of-line)
+        (setq buf (get-text-property (point) 'ewm:buffer)))
+      (when (and buf (buffer-live-p buf))
+        (cond
+         ((eql buf (ewm:history-get-main-buffer))
+          (ewm:pst-buffer-set 'right buf)
+          (ewm:plugin-exec-update-by-plugin-name
+           (selected-frame) (ewm:pst-get-wm) 'history-list2))
+         (t
+          (ewm:history-add buf)
+          (ewm:pst-show-history-main)))))))
+
+(ewm:plugin-register 'history-list2 
+                     "History List (two)"
+                     'ewm:def-plugin-history-list2)
 
 ;;; dired / メインバッファの位置のファイル一覧
 ;;;--------------------------------------------------
@@ -2358,7 +2474,7 @@ from the given string."
       '((:name left )
         (:name right :plugin main-prev)
         (:name sub :buffer "*Help*" :default-hide t)
-        (:name history :plugin history-list :default-hide nil)))
+        (:name history :plugin history-list2 :default-hide nil)))
 
 (ewm:pst-class-register
   (make-ewm:$pst-class
@@ -2459,7 +2575,9 @@ from the given string."
 
 (defun ewm:dp-two-double-column-command ()
   (interactive)
-  (wlf:set-buffer (ewm:pst-get-wm) 'right (ewm:history-get-main-buffer)))
+  (wlf:set-buffer (ewm:pst-get-wm) 'right (ewm:history-get-main-buffer))
+  (ewm:plugin-exec-update-by-plugin-name
+   (selected-frame) (ewm:pst-get-wm) 'history-list2))
 
 (defun ewm:dp-two-main-maximize-toggle-command ()
   (interactive)
