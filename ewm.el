@@ -2611,7 +2611,7 @@ from the given string."
         (:name right :plugin main-prev)
         (:name sub :buffer "*Help*" :default-hide t)
         (:name files :plugin files)
-        (:name history :plugin history-list)))
+        (:name history :plugin history-list2)))
 
 (ewm:pst-class-register
   (make-ewm:$pst-class
