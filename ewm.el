@@ -219,6 +219,21 @@
    keymap-list)
   keymap)
 
+;; window overriding
+
+(defvar ewm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
+
+(defmacro ewm:with-advice (&rest body)
+  ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
+  ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
+  ;;本来の動きにしたい場合はこのマクロで囲む。
+  `(if ewm:ad-now-overriding
+       (progn ,@body) ; 再帰している場合
+     (setq ewm:ad-now-overriding t) ; 初回
+     (unwind-protect 
+         (progn ,@body) 
+       (setq ewm:ad-now-overriding nil))))
+
 ;; text / string
 
 (defun ewm:string-trim (txt)
@@ -910,19 +925,6 @@ from the given string."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Advices / Overriding Functions
-
-(defvar ewm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
-
-(defmacro ewm:with-advice (&rest body)
-  ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
-  ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
-  ;;本来の動きにしたい場合はこのマクロで囲む。
-  `(if ewm:ad-now-overriding
-       (progn ,@body) ; 再帰している場合
-     (setq ewm:ad-now-overriding t) ; 初回
-     (unwind-protect 
-         (progn ,@body) 
-       (setq ewm:ad-now-overriding nil))))
 
 (defadvice switch-to-buffer (around
                              ewm:ad-override
