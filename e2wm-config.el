@@ -1,4 +1,4 @@
-;;; ewm-config.el --- ewm configuration
+;;; e2wm-config.el --- e2wm configuration
 
 ;; Copyright (C) 2010  SAKURAI Masashi
 
@@ -28,27 +28,27 @@
 
 (setq woman-use-own-frame nil) ; womanで新規フレームを開かせない
 
-;; (setq ewm:prefix-key "C-c ; ")
+;; (setq e2wm:prefix-key "C-c ; ")
 
-(require 'ewm)
+(require 'e2wm)
 
 ;;; 全体設定
 
-;; (setq ewm:debug nil) 
+;; (setq e2wm:debug nil) 
 
-;; (setq ewm:c-max-history-num 20)  ; 履歴の保存数
+;; (setq e2wm:c-max-history-num 20)  ; 履歴の保存数
 
-;; (setq ewm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
+;; (setq e2wm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
 ;;       (lambda (buf)
 ;;         (buffer-local-value 'buffer-file-name buf))) ; ファイル名に関連ついてるもの
 
-;; (setq ewm:c-document-buffer-p ; 
+;; (setq e2wm:c-document-buffer-p ; 
 ;;       (lambda (buf)
 ;;         (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)" 
 ;;                       (buffer-name buf)))) ; ドキュメント的に扱いたいバッファ
 
-;; (setq ewm:c-blank-buffer         ; 白紙バッファ
-;;       (let ((buf (get-buffer-create " *ewm:blank*")))
+;; (setq e2wm:c-blank-buffer         ; 白紙バッファ
+;;       (let ((buf (get-buffer-create " *e2wm:blank*")))
 ;;         (with-current-buffer buf
 ;;           (setq buffer-read-only nil)
 ;;           (buffer-disable-undo buf)
@@ -61,8 +61,7 @@
 ;;; code
 
 ;; ;; レイアウト
-;; ;; for 1440x900以上
-;; (setq ewm:c-code-recipe
+;; (setq e2wm:c-code-recipe
 ;;   '(| (:left-max-size 35)
 ;;       (- (:upper-size-ratio 0.7)
 ;;          files history)
@@ -71,27 +70,7 @@
 ;;             main imenu)
 ;;          sub)))
 
-;; ;; for 1280x768
-;; (setq ewm:c-code-recipe
-;;   '(| (:left-max-size 30)
-;;       (- (:upper-size-ratio 0.7)
-;;          files history)
-;;       (- (:upper-size-ratio 0.7)
-;;          (| (:right-max-size 25)
-;;             main imenu)
-;;          sub)))
-
-;; ;; for 1024x768
-;; (setq ewm:c-code-recipe
-;;   '(| (:left-max-size 35)
-;;       (- (:upper-size-ratio 0.7)
-;;          (- (:upper-size-ratio 0.6)
-;;             files imenu)
-;;          history)
-;;       (- (:upper-size-ratio 0.7)
-;;          main sub)))
-
-;; (setq ewm:c-code-winfo
+;; (setq e2wm:c-code-winfo
 ;;   '((:name main)
 ;;     (:name files :plugin files)
 ;;     (:name history :plugin history-list)
@@ -100,67 +79,67 @@
 ;;   )
 
 ;; ;; メインに表示していいもの（それ以外はSubに表示される）
-;; (setq ewm:c-code-show-main-regexp
+;; (setq e2wm:c-code-show-main-regexp
 ;;    "\\*\\(vc-diff\\)\\*")
 
 ;; キーバインド
-(ewm:add-keymap 
- ewm:pst-minor-mode-keymap
- '(("<M-left>" . ewm:dp-code) ; codeへ変更
-   ("<M-right>"  . ewm:dp-two)  ; twoへ変更
-   ("<M-up>"    . ewm:dp-doc)  ; docへ変更
-   ("<M-down>"  . ewm:dp-dashboard) ; dashboardへ変更
-   ("C-."       . ewm:pst-history-forward-command) ; 履歴を進む
-   ("C-,"       . ewm:pst-history-back-command) ; 履歴をもどる
+(e2wm:add-keymap 
+ e2wm:pst-minor-mode-keymap
+ '(("<M-left>" . e2wm:dp-code) ; codeへ変更
+   ("<M-right>"  . e2wm:dp-two)  ; twoへ変更
+   ("<M-up>"    . e2wm:dp-doc)  ; docへ変更
+   ("<M-down>"  . e2wm:dp-dashboard) ; dashboardへ変更
+   ("C-."       . e2wm:pst-history-forward-command) ; 履歴を進む
+   ("C-,"       . e2wm:pst-history-back-command) ; 履歴をもどる
    ("prefix L"  . ielm)
-   ("M-m"       . ewm:pst-window-select-main-command)
-   ) ewm:prefix-key)
+   ("M-m"       . e2wm:pst-window-select-main-command)
+   ) e2wm:prefix-key)
 
 ;;; two
 
 ;; ;; レイアウト
-;; (setq ewm:c-two-recipe
+;; (setq e2wm:c-two-recipe
 ;;       '(- (:upper-size-ratio 0.8)
 ;;           (| left
 ;;              (- (:upper-size-ratio 0.9)
 ;;                 right history))
 ;;           sub))
 
-;; (setq ewm:c-two-winfo
+;; (setq e2wm:c-two-winfo
 ;;       '((:name left )
-;;         (:name right :plugin main-prev)
+;;         (:name right )
 ;;         (:name sub :buffer "*Help*" :default-hide t)
 ;;         (:name history :plugin history-list :default-hide nil)))
 
 ;; キーバインド
-(ewm:add-keymap 
- ewm:dp-two-minor-mode-map 
+(e2wm:add-keymap 
+ e2wm:dp-two-minor-mode-map 
  '(("prefix I" . info)) 
- ewm:prefix-key)
+ e2wm:prefix-key)
 
 ;;; doc
 
 ;; ;; レイアウト
-;; (setq ewm:c-doc-recipe
+;; (setq e2wm:c-doc-recipe
 ;;       '(- (:upper-size-ratio 0.75)
 ;;         (| left right)
 ;;         sub))
 
-;; (setq ewm:c-doc-winfo
+;; (setq e2wm:c-doc-winfo
 ;;       '((:name left)
 ;;         (:name right)
 ;;         (:name sub :default-hide t)))
 
 ;; キーバインド
-(ewm:add-keymap 
- ewm:dp-doc-minor-mode-map 
+(e2wm:add-keymap 
+ e2wm:dp-doc-minor-mode-map 
  '(("prefix I" . info)) 
- ewm:prefix-key)
+ e2wm:prefix-key)
 
 ;;; dashboard
 
-(setq ewm:c-dashboard-plugins
-  '(
+(setq e2wm:c-dashboard-plugins
+  '(clock top
     (open :plugin-args (:command eshell :buffer "*eshell*"))
     (open :plugin-args (:command doctor :buffer "*doctor*"))
     ))
@@ -172,22 +151,22 @@
 
 ;;; top
 
-;; (setq ewm:def-plugin-top-timer-interval 20 "Seconds for update.")
+;; (setq e2wm:def-plugin-top-timer-interval 20 "Seconds for update.")
 
 ;;; clock
 
-;; (defvar ewm:def-plugin-clock-download-file "/tmp/wmclock.jpg"  "[internal]")
-;; (defvar ewm:def-plugin-clock-resized-file  "/tmp/wmclockt.jpg" "[internal]")
+;; (defvar e2wm:def-plugin-clock-download-file "/tmp/wmclock.jpg"  "[internal]")
+;; (defvar e2wm:def-plugin-clock-resized-file  "/tmp/wmclockt.jpg" "[internal]")
 ;;↑cygwin環境の場合は "C:/cygwin/tmp/wmclock.jpg" とかにすると良いかも
 
 ;; for bijin (default)
-;; (setq ewm:def-plugin-clock-url "http://www.bijint.com/jp/img/clk/%H%M.jpg")
-;; (setq ewm:def-plugin-clock-referer "http://www.bijint.com/jp/")
+;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/jp/img/clk/%H%M.jpg")
+;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/jp/")
 
 ;; for binan
-;; (setq ewm:def-plugin-clock-url "http://www.bijint.com/binan/img/clk/%H%M.jpg")
-;; (setq ewm:def-plugin-clock-referer "http://www.bijint.com/binan/")
+;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/binan/img/clk/%H%M.jpg")
+;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/binan/")
 
 
-(provide 'ewm-config)
-;;; ewm-config.el ends here
+(provide 'e2wm-config)
+;;; e2wm-config.el ends here

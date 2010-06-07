@@ -1,6 +1,6 @@
 ########################################
    
-   EWM : Emacs Window Managaer
+   E2WM : Equilibrium Emacs Window Managaer
    
 ########################################
 
@@ -56,14 +56,14 @@ Eclipseの「ビュー」のような、機能を持ったウインドウを増�
 
 必要なもの、環境
 
-ロードパスに ewm.el, window-layout.el を置き、以下のように呼び出し用の
+ロードパスに e2wm.el, window-layout.el を置き、以下のように呼び出し用の
 コードを .emacsなどに追加してください。以下の例では、Altキーを押しなが
 ら「+」を押すとウインドウの管理を開始します。終了する場合は「C-c ; C-q」
 です。
 
- ;最小の ewm 設定例
- (require 'ewm)
- (global-set-key (kbd "M-+") 'ewm:start-management)
+ ;最小の e2wm 設定例
+ (require 'e2wm)
+ (global-set-key (kbd "M-+") 'e2wm:start-management)
 
 ※注意点
 
@@ -99,7 +99,7 @@ TODO...
 
 TODO...
 
-なお、設定のひな形を ewm-config.el としておいていますので、参考にしてみ
+なお、設定のひな形を e2wm-config.el としておいていますので、参考にしてみ
 てください。
 
 
