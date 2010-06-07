@@ -680,8 +680,8 @@ from the given string."
       (e2wm:define-keymap
        '(("prefix Q"   . e2wm:stop-management)
          ("prefix l"   . e2wm:pst-update-windows-command)
-         ("prefix n"   . e2wm:pst-history-forward-command)
-         ("prefix p"   . e2wm:pst-history-back-command)
+         ("prefix n"   . e2wm:pst-history-down-command)
+         ("prefix p"   . e2wm:pst-history-up-command)
          ("prefix <DEL>" . e2wm:pst-change-prev-pst-command)
          ) e2wm:prefix-key))
 
@@ -814,6 +814,8 @@ from the given string."
   (when (e2wm:managed-p)
     (e2wm:history-back)
     (e2wm:pst-show-history-main)))
+(defalias 'e2wm:pst-history-up-command 'e2wm:pst-history-forward-command)
+(defalias 'e2wm:pst-history-down-command 'e2wm:pst-history-back-command)
 
 (defvar e2wm:pst-minor-mode-hook nil)
 
@@ -2656,19 +2658,22 @@ from the given string."
   (e2wm:pst-buffer-set 'right (e2wm:history-get-main-buffer))
   (e2wm:dp-two-update-history-list))
 
-(defun e2wm:dp-two-right-history-next-command ()
+(defun e2wm:dp-two-right-history-forward-command ()
   (interactive)
   (e2wm:pst-buffer-set
    'right (e2wm:history-get-next
            (e2wm:pst-buffer-get 'right)))
   (e2wm:dp-two-update-history-list))
 
-(defun e2wm:dp-two-right-history-prev-command ()
+(defun e2wm:dp-two-right-history-back-command ()
   (interactive)
   (e2wm:pst-buffer-set
    'right (e2wm:history-get-prev
            (e2wm:pst-buffer-get 'right)))
   (e2wm:dp-two-update-history-list))
+
+(defalias 'e2wm:dp-two-right-history-up-command 'e2wm:dp-two-right-history-forward-command)
+(defalias 'e2wm:dp-two-right-history-down-command 'e2wm:dp-two-right-history-back-command)
 
 (defun e2wm:dp-two-swap-buffers-command ()
   (interactive)
@@ -2687,8 +2692,8 @@ from the given string."
    '(("prefix d" . e2wm:dp-two-double-column-command)
      ("prefix S" . e2wm:dp-two-sub-toggle-command)
      ("prefix -" . e2wm:dp-two-swap-buffers-command)
-     ("prefix N" . e2wm:dp-two-right-history-next-command)
-     ("prefix P" . e2wm:dp-two-right-history-prev-command)
+     ("prefix N" . e2wm:dp-two-right-history-down-command)
+     ("prefix P" . e2wm:dp-two-right-history-up-command)
      ("prefix H" . e2wm:dp-two-history-toggle-command)
      ("prefix M" . e2wm:dp-two-main-maximize-toggle-command))
    e2wm:prefix-key))

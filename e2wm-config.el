@@ -114,8 +114,10 @@
 ;; キーバインド
 (e2wm:add-keymap 
  e2wm:dp-two-minor-mode-map 
- '(("prefix I" . info)) 
- e2wm:prefix-key)
+ '(("prefix I" . info)
+   ("C->"       . e2wm:dp-two-right-history-forward-command) ; 右側の履歴を進む
+   ("C-<"       . e2wm:dp-two-right-history-back-command) ; 右側の履歴を進む
+   ) e2wm:prefix-key)
 
 ;;; doc
 
