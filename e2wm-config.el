@@ -61,6 +61,8 @@
 ;;; code
 
 ;; ;; レイアウト
+
+;; ;; for 1440x900以上 (default)
 ;; (setq e2wm:c-code-recipe
 ;;   '(| (:left-max-size 35)
 ;;       (- (:upper-size-ratio 0.7)
@@ -69,6 +71,26 @@
 ;;          (| (:right-max-size 30)
 ;;             main imenu)
 ;;          sub)))
+
+;; ;; for 1280x768
+;; (setq e2wm:c-code-recipe
+;;   '(| (:left-max-size 30)
+;;       (- (:upper-size-ratio 0.7)
+;;          files history)
+;;       (- (:upper-size-ratio 0.7)
+;;          (| (:right-max-size 25)
+;;             main imenu)
+;;          sub)))
+
+;; ;; for 1024x768
+;; (setq e2wm:c-code-recipe
+;;   '(| (:left-max-size 35)
+;;       (- (:upper-size-ratio 0.7)
+;;          (- (:upper-size-ratio 0.6)
+;;             files imenu)
+;;          history)
+;;       (- (:upper-size-ratio 0.7)
+;;          main sub)))
 
 ;; (setq e2wm:c-code-winfo
 ;;   '((:name main)
