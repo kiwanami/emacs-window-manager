@@ -61,6 +61,7 @@
 ;;     kill-buffer-hook
 ;;     window-configuration-change-hook
 ;;     completion-setup-hook
+;;     after-save-hook
 ;; * override variable
 ;;     special-display-function
 
@@ -112,6 +113,7 @@
 
 (require 'window-layout)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Customize
 
@@ -135,6 +137,7 @@
 
 (defvar e2wm:prefix-key "C-c ; " "Prefix key")
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Macro / Utilities
 
@@ -319,6 +322,7 @@ from the given string."
         do (setq lmax (max lmax ln))
         finally return lmax))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Base API / History Management
 
@@ -462,6 +466,7 @@ from the given string."
   ;;TODO: できれば何か印をつけておきたい
   (e2wm:aand buf (string-match "\\*WM:" (buffer-name it))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Framework
 
@@ -959,6 +964,7 @@ from the given string."
         (e2wm:aand pos (nth (1- it) pset)
                   (e2wm:pst-change it)))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Advices / Overriding Functions
 
@@ -1151,6 +1157,7 @@ from the given string."
     ad-do-it))
   (e2wm:message "#SET-WINDOW-CONFIGURATION <-- %s" ad-return-value))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Framework
 
@@ -1242,6 +1249,7 @@ from the given string."
       (e2wm:pst-window-plugin-set wm wname nil)
       (e2wm:pst-update-windows))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Menu Definition
 
@@ -1305,6 +1313,7 @@ from the given string."
 
 ;; (e2wm:menu-define)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Plugin Definition
 
@@ -2387,6 +2396,7 @@ from the given string."
                      "Open Buffer"
                      'e2wm:def-plugin-open)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
 
@@ -3347,6 +3357,7 @@ from the given string."
      ))
     keymap))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Setup
 
