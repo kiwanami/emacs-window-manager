@@ -136,6 +136,11 @@
 ;;         (:name sub :buffer "*Help*" :default-hide t)
 ;;         (:name history :plugin history-list :default-hide nil)))
 
+;; デフォルトで右側に何を表示するかの設定。
+;; * left : 左右同じバッファ
+;; * prev : バッファ履歴のひとつ前
+;; (setq e2wm:c-two-right-default 'left) ; left, prev
+
 ;; キーバインド
 (e2wm:add-keymap 
  e2wm:dp-two-minor-mode-map 
