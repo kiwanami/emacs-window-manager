@@ -32,6 +32,8 @@
 
 (require 'e2wm)
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 全体設定
 
 ;; (setq e2wm:debug nil) 
@@ -55,7 +57,8 @@
 ;;           (erase-buffer)
 ;;           (setq buffer-read-only t)) buf))
 
-
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; パースペクティブカスタマイズ
 
 ;;; code
@@ -171,6 +174,8 @@
 ;;; pstset
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; プラグインカスタマイズ
 
 ;;; top
@@ -190,6 +195,82 @@
 ;; for binan
 ;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/binan/img/clk/%H%M.jpg")
 ;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/binan/")
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 機能干渉対応
+
+;;; For emacsclient
+
+;; server-start を実行した後に、follow-mode を実行すると emacsclient と
+;; の通信が出来なくなる。follow-mode が emacsclient のソケットプロセス
+;; の入力を捨ててしまうことが原因。
+
+;; 対策(1)
+;; follow-intercept-processes を nil にすると、 follow-mode のプロセス
+;; 乗っ取りを止めることが出来るが、外部プロセスの入力によって
+;; follow-modeの位置がずれていくことがあるかもしれない。
+
+(setq follow-intercept-processes nil)
+
+;; 対策(2)
+;; follow-intercept-processes を nil にしたくない場合は、以下のように
+;; follow-modeの関数を乗っ取ることでうまく動く。ただし、 follow-mode の
+;; 実装が今後変わった場合には、動作は保証されない。
+
+;; (eval-after-load "follow-mode"
+;;   (defun follow-intercept-process-output ()
+;;     "Intercept all active processes (Overrided by e2wm)."
+;;     (interactive)
+;;     (let ((list (process-list)))
+;;       (while list
+;;         (if (or (eq (process-filter (car list)) 'follow-generic-filter)
+;;                 (eq (car list) server-process)) ; <- see the source at "server.el"
+;;             nil
+;;           (set-process-filter (car list) (process-filter (car list))))
+;;         (setq list (cdr list))))
+;;     (setq follow-intercept-processes t))
+;;   )
+
+
+;;; For widen-window.el
+
+;; widen-window.el と e2wm を同時に使うとEmacsがエラーで入力を受け付け
+;; なくなってしまう。widen-window.elがアドバイスで乗っ取る関数と e2wm
+;; が乗っ取る関数がかぶっていることが原因。以下のコメントされたコードを
+;; 実行すると、e2wmのフレームではwiden-window.elが動作しないように回避
+;; する。
+
+;; (eval-after-load "widen-window"
+;;
+;;   (defun e2wm:fix-widen-window-pre-start ()
+;;
+;;     ;; widen-window でエラーを起きないようする
+;;     (defadvice wlf:layout-internal (around disable-ww-mode activate)
+;;       (ad-deactivate-regexp "widen-window")
+;;       (unwind-protect
+;;           ad-do-it
+;;         (ad-activate-regexp "widen-window")))
+;;
+;;     ;; widen-window を e2wm では全く使わない場合
+;;     (defadvice widen-current-window (around e2wm:disable-ww-mode activate)
+;;       (unless (e2wm:managed-p)
+;;         ad-do-it
+;;         )))
+;;
+;;   (defun e2wm:fix-widen-window-post-stop ()
+;;     ;; e2wm が終わったら widen-window を戻す
+;;     (ad-deactivate-regexp "e2wm:disable-ww-mode"))
+;;
+;;   (defun e2wm:fix-widen-window ()
+;;     (interactive)
+;;     (when (featurep 'widen-window)
+;;       (add-hook 'e2wm:pre-start-hook 'e2wm:fix-widen-window-pre-start)
+;;       (add-hook 'e2wm:post-stop-hook 'e2wm:fix-widen-window-post-stop))
+;;     )
+;;
+;;   (e2wm:fix-widen-window))
 
 
 (provide 'e2wm-config)
