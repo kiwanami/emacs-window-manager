@@ -745,9 +745,13 @@ from the given string."
   ;;指定したウインドウにバッファをセットする
   (let ((wm (e2wm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
-      (when showp
+      (when (and showp (not (wlf:get-window wm window-name)))
         (wlf:show wm window-name))
-      (wlf:set-buffer wm window-name buffer selectp))))
+      (wlf:set-buffer wm window-name buffer selectp)
+      (when showp
+        (set-window-point
+         (wlf:get-window wm window-name) 
+         (with-current-buffer buffer (point)))))))
 
 (defun e2wm:pst-window-select (window-name)
   ;;指定したウインドウを選択する
@@ -2481,7 +2485,7 @@ from the given string."
       t)
      ((and e2wm:c-code-show-main-regexp
            (string-match e2wm:c-code-show-main-regexp buf-name))
-      (wlf:set-buffer wm 'main buf t)
+      (e2wm:pst-buffer-set 'main buf t)
       t)
      (t
       (e2wm:dp-code-popup-sub buf)
@@ -2491,8 +2495,7 @@ from the given string."
   (let ((wm (e2wm:pst-get-wm))
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf not-minibufp))))
+     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
 
 ;; Commands / Keybindings
 
@@ -2603,7 +2606,7 @@ from the given string."
          ((eql (get-buffer buf) (wlf:get-buffer wm 'left))
           ;;メインと同じなら並べる
           (e2wm:pst-update-windows)
-          (wlf:set-buffer wm 'right buf)
+          (e2wm:pst-buffer-set 'right buf)
           t)
          ((e2wm:history-recordable-p buf)
           ;;普通の編集対象なら履歴につっこんで更新
@@ -2620,7 +2623,7 @@ from the given string."
   (let ((buf-name (buffer-name buf)))
     (cond
      ((e2wm:document-buffer-p buf)
-      (wlf:set-buffer (e2wm:pst-get-wm) 'right buf)
+      (e2wm:pst-buffer-set 'right buf)
       t)
      ((e2wm:history-recordable-p buf)
       (e2wm:pst-show-history-main)
@@ -2630,10 +2633,10 @@ from the given string."
       t))))
 
 (defun e2wm:dp-two-popup-sub (buf)
-  (let ((wm (e2wm:pst-get-wm)))
+  (let ((wm (e2wm:pst-get-wm))
+        (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf))))
+     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
 
 ;; Commands / Keybindings
 
@@ -2819,8 +2822,8 @@ from the given string."
   (let ((wm (e2wm:pst-get-wm)))
     (with-current-buffer buf
       (follow-mode 1))
-    (wlf:set-buffer wm 'left buf)
-    (wlf:set-buffer wm 'right buf)))
+    (e2wm:pst-buffer-set 'left buf)
+    (e2wm:pst-buffer-set 'right buf)))
 
 (defun e2wm:dp-doc-switch (buf)
   ;;left,rightでswitch-to-bufferが起きたら、乗っ取って両方に表示する。
@@ -2847,10 +2850,10 @@ from the given string."
       t))))
 
 (defun e2wm:dp-doc-popup-sub (buf)
-  (let ((wm (e2wm:pst-get-wm)))
+  (let ((wm (e2wm:pst-get-wm))
+        (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (wlf:show wm 'sub)
-     (wlf:set-buffer wm 'sub buf))))
+     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
 
 (defun e2wm:dp-doc-leave (wm)
   (let ((buf (get-buffer (wlf:get-buffer wm 'left))))

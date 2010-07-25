@@ -238,6 +238,18 @@
 ;;     (setq follow-intercept-processes t))
 ;;   )
 
+;;; For moccur
+
+;; moccurの検索結果バッファでエンター（moccur-mode-goto-occurrence）す
+;; ると、delete-other-windowsされて検索結果位置が表示されない。
+;; （基本的に delete-other-windows などを行うものは同様の挙動になる。う
+;; まく個別に対応しないで済ますアイデアが必要。）
+
+(defadvice moccur-mode-goto-occurrence (around e2wm:ad-override activate)
+  (flet ((delete-other-windows () ))
+    ad-do-it )
+  (delete-window (selected-window))
+  (e2wm:pst-window-select-main))
 
 ;;; For widen-window.el
 
