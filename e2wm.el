@@ -90,6 +90,10 @@
 
 ;;; 更新履歴
 
+;; Revision 1.2  2010/07/24  sakurai
+;; moccurの検索結果のカーソール移動がうまくいかない問題の修正。
+;; <<continue...>>
+;; 
 ;; Revision 1.1  2010/06/07  sakurai
 ;; 名前の変更 (ewm.el -> e2wm.el)
 ;; 未宣言の変数のバグ修正
@@ -116,7 +120,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Customize
-
 (defvar e2wm:c-max-history-num 20 "Number of buffer history.")   ; 履歴の保存数
 (defvar e2wm:c-recordable-buffer-p  ; 履歴として記録したいBuffer
   (lambda (buf)
