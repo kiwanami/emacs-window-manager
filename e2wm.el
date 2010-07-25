@@ -142,15 +142,18 @@
 ;;; ### Macro / Utilities
 
 (defmacro e2wm:aif (test-form then-form &rest else-forms)
+  (declare (debug ("test-form" form "then-form" form &rest form)))
   `(let ((it ,test-form))
      (if it ,then-form ,@else-forms)))
 (put 'e2wm:aif 'lisp-indent-function 2)
 
 (defmacro e2wm:aand (test &rest rest)
+  (declare (debug ("test" form &rest form)))
   `(let ((it ,test))
      (if it ,(if rest (macroexpand-all `(e2wm:aand ,@rest)) 'it))))
 
 (defmacro e2wm:not-minibuffer (&rest body)
+  (declare (debug (&rest form)))
   `(when (= 0 (minibuffer-depth))
      ,@body))
 
@@ -229,6 +232,7 @@
 (defvar e2wm:ad-now-overriding nil "[internal] Recursive execution flag.") ; 乗っ取り中なら t → 元の関数を実行
 
 (defmacro e2wm:with-advice (&rest body)
+  (declare (debug (&rest form)))
   ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
   ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
   ;;本来の動きにしたい場合はこのマクロで囲む。
