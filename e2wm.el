@@ -2498,7 +2498,7 @@ from the given string."
   (let ((wm (e2wm:pst-get-wm))
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
+     (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
 
 ;; Commands / Keybindings
 
@@ -2639,7 +2639,7 @@ from the given string."
   (let ((wm (e2wm:pst-get-wm))
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
+     (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
 
 ;; Commands / Keybindings
 
@@ -2856,7 +2856,7 @@ from the given string."
   (let ((wm (e2wm:pst-get-wm))
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (e2wm:pst-buffer-set 'sub buf not-minibufp))))
+     (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
 
 (defun e2wm:dp-doc-leave (wm)
   (let ((buf (get-buffer (wlf:get-buffer wm 'left))))
