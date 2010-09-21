@@ -1,4 +1,4 @@
-;;; e2wm.el --- simple window manager for emacs
+;;; e2wm.el --- simple window manager for Emacs
 
 ;; Copyright (C) 2010  SAKURAI Masashi
 
@@ -21,17 +21,17 @@
 
 ;;; Commentary:
 
-;; This is an demonstration implementation of introducing window management to emacs.
+;; This is an demonstration implementation of introducing window management to Emacs.
 ;; * Management of list of editable buffers
-;; * Assignment of windows for popup buffers
+;; * Assignment of windows for pop-up buffers
 ;; * Switching window layout like the perspective in eclipse
-;; * Plugin extension 
+;; * Plug-in extension 
 
 ;; The current implementation has following perspectives:
 ;; * code      : main coding layout
 ;; * two       : side by side layout
 ;; * doc       : reading documentation layout
-;; * dashboard : showing plugins like dashboard in Mac OSX
+;; * dashboard : showing plug-ins like dashboard in Mac OSX
 ;; * array     : selecting buffers like expose in Mac OSX
 
 ;;; Installation:
@@ -78,28 +78,28 @@
 ;; Framework for perspectives / e2wm:pst-
 ;; Framework for perspective set / e2wm:pstset-
 ;; Advices and hooks (switch-to-buffer, pop-to-buffer and so on)
-;; Framework for plugins / e2wm:plugin-
+;; Framework for plug-ins / e2wm:plugin-
 ;; Menu definition / e2wm:menu-
-;; Plugin definitions / e2wm:def-plugin-
-;; Perspevtive definitions / e2wm:dp-
+;; Plug-in definitions / e2wm:def-plugin-
+;; Perspective definitions / e2wm:dp-
 ;;   code  / e2wm:dp-code-
 ;;   doc   / e2wm:dp-doc-
 ;;   two   / e2wm:dp-two-
 ;;   dashboard / e2wm:dp-dashboard-
 ;;   array / e2wm:dp-array-
-;; Startup and exit e2wm
+;; Start-up and exit e2wm
 
 ;;; History:
 
 ;; Revision 1.2  2010/07/24  sakurai
-;;  Fixed: conflicts with moccur
+;;  Fixed: conflicts with occur
 ;; <<continue...>>
 ;; 
 ;; Revision 1.1  2010/06/07  sakurai
 ;;  Changed name: ewm.el -> e2wm.el
 ;;  Fixed: undefined variables
-;;  Added: hooks of startup and exit e2wm
-;;  Improved: files plugin
+;;  Added: hooks of start-up and exit e2wm
+;;  Improved: files plug-in
 ;;  Improved: handling multiple frames
 ;;  Improved: two perspective
 ;;
@@ -129,7 +129,7 @@
 (defvar e2wm:c-document-buffer-p
   (lambda (buf)
     (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)" (buffer-name buf)))
-  "Retrun non-nil, if the buffer is a document buffer.")
+  "Return non-nil, if the buffer is a document buffer.")
 (defvar e2wm:c-blank-buffer
       (let ((buf (get-buffer-create " *e2wm:blank*")))
         (with-current-buffer buf
@@ -209,7 +209,7 @@ equals to NAME in the given sequence SEQ."
   (e2wm:message "==================== mark ==== %s" 
                (format-time-string "%H:%M:%S" (current-time))))
 
-;; keymap
+;; key-map
 
 (defun e2wm:define-keymap (keymap-list &optional prefix)
   "[utility] Return a keymap object with given keymap definitions
@@ -320,7 +320,7 @@ string. ARGS is a list of cons cell, ([string] . [face name])."
                collect (e2wm:rt i 'e2wm:face-subtitle))))
 
 (defun e2wm:tp (text prop value)
-  "[utility] Put a text property to the first charactor of TEXT."
+  "[utility] Put a text property to the first character of TEXT."
   (if (< 0 (length text))
     (put-text-property 0 1 prop value text))
   text)
