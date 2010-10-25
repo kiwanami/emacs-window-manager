@@ -198,9 +198,17 @@
 ;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/jp/")
 
 ;; for binan
-;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/binan/img/clk/%H%M.jpg")
+;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/binan/tokei_images/%H%M.jpg")
 ;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/binan/")
 
+;; for circuit
+;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/cc/tokei_images/%H%M.jpg")
+;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/cc/")
+
+;; for fukuoka (maybe the other places...)
+;; (setq e2wm:def-plugin-clock-url "http://www.bijint.com/fukuoka/tokei_images/%H%M.jpg")
+;; (setq e2wm:def-plugin-clock-referer "http://www.bijint.com/fukuoka/")
+;; see the site -> http://www.bijint.com/jp/pages/tokei/
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
