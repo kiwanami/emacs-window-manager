@@ -145,13 +145,13 @@
 ;;; ### Macro / Utilities
 
 (defmacro e2wm:aif (test-form then-form &rest else-forms)
-  (declare (debug ("test-form" form "then-form" form &rest form)))
+  (declare (debug (form form &rest form)))
   `(let ((it ,test-form))
      (if it ,then-form ,@else-forms)))
 (put 'e2wm:aif 'lisp-indent-function 2)
 
 (defmacro e2wm:aand (test &rest rest)
-  (declare (debug ("test" form &rest form)))
+  (declare (debug (form &rest form)))
   `(let ((it ,test))
      (if it ,(if rest (macroexpand-all `(e2wm:aand ,@rest)) 'it))))
 
