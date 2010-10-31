@@ -1690,6 +1690,8 @@ from the given string."
    '(("C-m" . e2wm:def-plugin-imenu-jump-command)
      ("j" . next-line)
      ("k" . previous-line)
+     ("n" . next-line)
+     ("p" . previous-line)
      ("u" . scroll-down)
      ("e" . scroll-down)
      ("d" . scroll-up)
@@ -2363,8 +2365,11 @@ from the given string."
 
 (defvar e2wm:def-plugin-files-mode-map 
   (e2wm:define-keymap 
-   '(("k" . previous-line)
+   '(
+     ("k" . previous-line)
      ("j" . next-line)
+     ("p" . previous-line)
+     ("n" . next-line)
      ("D" . e2wm:def-plugin-files-open-dired-command)
      ("h" . e2wm:def-plugin-files-toggle-hidden-files-command)
      ("+" . e2wm:def-plugin-files-mkdir-command)
@@ -3347,8 +3352,8 @@ from the given string."
      ([up]    . e2wm:dp-array-move-up-command)
      ([down]  . e2wm:dp-array-move-down-command)
      ;;emacs
-     ("f"   . e2wm:dp-array-move-left-command)
-     ("b"   . e2wm:dp-array-move-right-command)
+     ("f"   . e2wm:dp-array-move-right-command)
+     ("b"   . e2wm:dp-array-move-left-command)
      ("p"   . e2wm:dp-array-move-up-command)
      ("n"   . e2wm:dp-array-move-down-command)
      ("C-f" . e2wm:dp-array-move-right-command)
