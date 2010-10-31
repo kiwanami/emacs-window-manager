@@ -1054,6 +1054,8 @@ from the given string."
 ;; set-window-configuration 対策
 ;; いろいろ試行錯誤中。
 
+(defvar e2wm:override-window-ext-managed nil) ; Elscreenのように、別アプリがフレームを管理している場合はt
+
 (defun e2wm:debug-windows (wm)
   (e2wm:message " # WINDOWS : %s" 
                (loop for winfo in (wlf:wset-winfo-list wm)
@@ -1161,7 +1163,7 @@ from the given string."
           (e2wm:pst-resume pst-instance))))))
    (t
     ;;管理してない配置の場合はパースペクティブを無効にする
-    (when (e2wm:managed-p)
+    (when (and (e2wm:managed-p) (null e2wm:override-window-ext-managed))
       (e2wm:message "#AD-SET-WINDOW-CONFIGURATION FINISH")
       (e2wm:pst-finish)
       (e2wm:pst-set-instance nil))
@@ -2787,6 +2789,7 @@ from the given string."
    :init   'e2wm:dp-doc-init
    :title  "Document"
    :main   'left
+   :start  'e2wm:dp-doc-start
    :update 'e2wm:dp-doc-update
    :switch 'e2wm:dp-doc-switch
    :popup  'e2wm:dp-doc-popup
@@ -2812,9 +2815,11 @@ from the given string."
                     (e2wm:history-get-main-buffer))))
     
     (wlf:set-buffer doc-wm 'left buf)
-    (with-current-buffer buf
-      (follow-mode 1))
     doc-wm))
+
+(defun e2wm:dp-doc-start (wm)
+  (with-current-buffer (wlf:get-buffer wm 'left)
+    (follow-mode 1)))
 
 (defun e2wm:dp-doc-update (wm)
   (e2wm:message "#DP DOC update")
