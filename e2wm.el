@@ -3390,8 +3390,6 @@ from the given string."
    ("prefix 5" . e2wm:dp-dashboard))
  e2wm:prefix-key)
 
-(defvar e2wm:save-window-configuration nil) ; backup
-
 (defun e2wm:history-add-loaded-buffers ()
   (interactive)
   (loop for b in (buffer-list)
@@ -3410,10 +3408,11 @@ from the given string."
    (e2wm:pst-minor-mode
     (message "E2wm has already started."))
    (t
-    (setq e2wm:save-window-configuration 
-          (current-window-configuration))
-
     (run-hooks 'e2wm:pre-start-hook)
+
+    (e2wm:frame-param-set 
+     'e2wm-save-window-configuration 
+     (current-window-configuration))
 
     (e2wm:history-add-loaded-buffers) ; 全部つっこむ
     (e2wm:history-save-backup nil)
@@ -3442,7 +3441,8 @@ from the given string."
 
     (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
 
-    (e2wm:aif e2wm:save-window-configuration
+    (e2wm:aif (e2wm:frame-param-get 
+               'e2wm-save-window-configuration)
         (set-window-configuration it))
     (run-hooks 'e2wm:post-stop-hook)))
 
