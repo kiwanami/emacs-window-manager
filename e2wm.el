@@ -1,9 +1,9 @@
 ;;; e2wm.el --- simple window manager for emacs
 
-;; Copyright (C) 2010  SAKURAI Masashi
+;; Copyright (C) 2010, 2011  SAKURAI Masashi
 
 ;; Author: SAKURAI Masashi <m.sakurai atmark kiwanami.net>
-;; Version: 1.1
+;; Version: 1.2
 ;; Keywords: tools, window manager
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -90,9 +90,10 @@
 
 ;;; 更新履歴
 
-;; Revision 1.2  2010/07/24  sakurai
-;; moccurの検索結果のカーソール移動がうまくいかない問題の修正。
-;; <<continue...>>
+;; Revision 1.2  2011/01/28  sakurai
+;; elscreen対応, e2wm開始・終了時のウインドウ保存改善
+;; subウインドウがたまに残ってしまう問題の改善と動作速度改善
+;; faceのバグ修正など
 ;; 
 ;; Revision 1.1  2010/06/07  sakurai
 ;; 名前の変更 (ewm.el -> e2wm.el)
