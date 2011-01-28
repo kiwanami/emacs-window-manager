@@ -268,16 +268,17 @@ from the given string."
     (format-time-string   "%Y/%m/%d %H:%M:%S" time)))
 
 (defface e2wm:face-title 
-  '((((type tty pc) (class color) (background light))
-     :foreground "green" :weight bold)
-    (((type tty pc) (class color) (background dark))
-     :foreground "yellow" :weight bold)
+  '((((class color) (background light))
+     :foreground "Deeppink2" :height 1.5 :inherit variable-pitch)
+    (((class color) (background dark))
+     :foreground "yellow" :weight bold :height 1.5 :inherit variable-pitch)
     (t :height 1.5 :weight bold :inherit variable-pitch))
   "Face for e2wm titles at level 1."
   :group 'e2wm)
 
 (defface e2wm:face-subtitle
-  '((((type tty pc) (class color)) :foreground "lightblue" :weight bold)
+  '((((class color))
+     :foreground "Gray10" :height 1.2 :inherit variable-pitch)
     (t :height 1.2 :inherit variable-pitch))
   "Face for e2wm titles at level 2."
   :group 'e2wm)
@@ -622,8 +623,10 @@ from the given string."
    (let* ((instance (e2wm:pst-get-instance))
           (wm (e2wm:$pst-wm instance)))
      ;;(e2wm:debug-windows (e2wm:pst-get-wm))
+     (unless rebuild-windows
+       (wlf:wset-fix-windows wm))
      (when (or rebuild-windows 
-               (not (wlf:wset-live-p wm 1)))
+               (not (wlf:wset-live-p wm)))
        (e2wm:message "  #PST-UPDATE > REBUILD")
        (wlf:refresh wm)
        (e2wm:aif (e2wm:$pst-main instance)
@@ -814,8 +817,9 @@ from the given string."
   (interactive)
   (when (e2wm:managed-p)
     (e2wm:with-advice
-     (wlf:reset-window-sizes (e2wm:pst-get-wm))
-     (e2wm:pst-update-windows))))
+     (let ((livep (wlf:wset-live-p (e2wm:pst-get-wm))))
+       (wlf:reset-window-sizes (e2wm:pst-get-wm))
+       (e2wm:pst-update-windows (not livep))))))
 (defun e2wm:pst-change-prev-pst-command ()
   (interactive)
   (when (e2wm:managed-p)
@@ -2469,7 +2473,9 @@ from the given string."
 (defun e2wm:dp-code-switch (buf)
   (e2wm:message "#DP CODE switch : %s" buf)
   (if (e2wm:history-recordable-p buf)
-      (e2wm:pst-show-history-main)
+      (progn
+        (e2wm:pst-show-history-main)
+        (e2wm:pst-window-select-main))
     nil))
 
 (defun e2wm:dp-code-popup (buf)
