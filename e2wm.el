@@ -886,6 +886,7 @@ from the given string."
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
       (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))
 
+  (e2wm:restore-delete-other-windows)
   (remove-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (remove-hook 'window-configuration-change-hook 
                'e2wm:override-window-cfg-change)
@@ -900,6 +901,7 @@ from the given string."
       (setf (cdr it) e2wm:pst-minor-mode-keymap-backup))
   (setq e2wm:pst-minor-mode-keymap-backup nil)
 
+  (e2wm:override-delete-other-windows)
   (ad-activate-regexp "^e2wm:ad-override" t)
   (add-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (add-hook 'window-configuration-change-hook
@@ -1055,6 +1057,37 @@ from the given string."
     ;; killされたら履歴からも消す
     (e2wm:history-delete (current-buffer))
     (e2wm:pst-show-history-main)))
+
+;; delete-other-windows対策
+
+(defvar e2wm:delete-other-windows-permission nil "[internal] If this
+value is t, one can execute `delete-other-windows' under the e2wm
+management. For window-layout.el.")
+
+(defvar e2wm:delete-other-windows-original nil
+  "[internal] Original function definition.")
+
+(defadvice wlf:clear-windows (around e2wm:ad-override)
+  (let ((e2wm:delete-other-windows-permission t))
+    ad-do-it))
+
+(defun e2wm:delete-other-windows (&optional window)
+  (interactive "P")
+  (when e2wm:delete-other-windows-permission
+    (funcall e2wm:delete-other-windows-original window)))
+
+(defun e2wm:override-delete-other-windows ()
+  (let ((func (symbol-function 'delete-other-windows)))
+    (cond
+     ((subrp func)
+      (setq e2wm:delete-other-windows-original func)
+      (fset 'delete-other-windows 'e2wm:delete-other-windows))
+     (t
+      (error "Can not override `delete-other-windows' function. [%S]" func)))))
+
+(defun e2wm:restore-delete-other-windows ()
+  (fset 'delete-other-windows e2wm:delete-other-windows-original))
+
 
 ;; set-window-configuration 対策
 ;; いろいろ試行錯誤中。

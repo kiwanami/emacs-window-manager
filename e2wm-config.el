@@ -254,8 +254,7 @@
 ;; まく個別に対応しないで済ますアイデアが必要。）
 
 (defadvice moccur-mode-goto-occurrence (around e2wm:ad-override activate)
-  (flet ((delete-other-windows () ))
-    ad-do-it )
+  ad-do-it
   (delete-window (selected-window))
   (e2wm:pst-window-select-main))
 
