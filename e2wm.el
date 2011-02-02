@@ -892,6 +892,7 @@ from the given string."
                'e2wm:override-window-cfg-change)
   (remove-hook 'completion-setup-hook 'e2wm:override-setup-completion)
   (remove-hook 'after-save-hook 'e2wm:pst-after-save-hook)
+  (remove-hook 'next-error-hook 'e2wm:select-window-point)
   (setq display-buffer-function nil)
   (ad-deactivate-regexp "^e2wm:ad-override$"))
 
@@ -908,6 +909,7 @@ from the given string."
             'e2wm:override-window-cfg-change)
   (add-hook 'completion-setup-hook 'e2wm:override-setup-completion)
   (add-hook 'after-save-hook 'e2wm:pst-after-save-hook)
+  (add-hook 'next-error-hook 'e2wm:select-window-point)
   (setq display-buffer-function 'e2wm:override-special-display-function))
 
 (defun e2wm:pst-minor-mode-switch-frame (frame)
@@ -1088,6 +1090,31 @@ management. For window-layout.el.")
 (defun e2wm:restore-delete-other-windows ()
   (fset 'delete-other-windows e2wm:delete-other-windows-original))
 
+;; コンパイルエラーのような他のウインドウへの表示をする拡張への対応
+;; compile-goto-error の仕組みを使うものについては next-error-hook で実行
+
+(defun e2wm:move-window-point (&optional buf)
+  ;; ウインドウの表示位置のみを更新
+  (let ((buf (or buf (current-buffer))))
+    (when (and
+           (e2wm:managed-p)
+           (eq (wlf:get-window (e2wm:pst-get-wm) 'sub) (selected-window))
+           (not (eql (selected-window) (get-buffer-window buf))))
+      (set-window-point 
+       (get-buffer-window buf)
+       (with-current-buffer buf (point))))))
+
+(defun e2wm:select-window-point (&optional buf)
+  ;; ウインドウを選択して表示位置を更新
+  (let ((buf (or buf (current-buffer))))
+    (when (and
+           (e2wm:managed-p)
+           (eq (wlf:get-window (e2wm:pst-get-wm) 'sub) (selected-window))
+           (not (eql (selected-window) (get-buffer-window buf))))
+      (set-window-point 
+       (get-buffer-window buf)
+       (with-current-buffer buf (point)))
+      (select-window (get-buffer-window buf)))))
 
 ;; set-window-configuration 対策
 ;; いろいろ試行錯誤中。

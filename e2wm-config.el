@@ -1,6 +1,6 @@
 ;;; e2wm-config.el --- e2wm configuration
 
-;; Copyright (C) 2010  SAKURAI Masashi
+;; Copyright (C) 2010, 2011  SAKURAI Masashi
 
 ;; Author: SAKURAI Masashi <m.sakurai@kiwanami.net>
 ;; Version: 1.0
@@ -253,10 +253,28 @@
 ;; （基本的に delete-other-windows などを行うものは同様の挙動になる。う
 ;; まく個別に対応しないで済ますアイデアが必要。）
 
-(defadvice moccur-mode-goto-occurrence (around e2wm:ad-override activate)
-  ad-do-it
-  (delete-window (selected-window))
-  (e2wm:pst-window-select-main))
+(eval-after-load "color-moccur"
+  '(progn
+
+     (defadvice moccur-mode-goto-occurrence (around e2wm:ad-override)
+       ad-do-it
+       (delete-window (selected-window))
+       (e2wm:pst-window-select-main))
+     
+     (defadvice goto-line (around e2wm:ad-override)
+       ad-do-it
+       (let ((buf (or (ad-get-arg 2) (current-buffer))))
+         (when (and
+                (e2wm:managed-p)
+                (eq (wlf:get-window (e2wm:pst-get-wm) 'sub) (selected-window))
+                (not (eql (selected-window) (get-buffer-window buf))))
+           (set-window-point 
+            (get-buffer-window buf)
+            (with-current-buffer buf (point))))))
+
+     (when (e2wm:managed-p)
+       (ad-activate-regexp "^e2wm:ad-override$"))
+     ))
 
 ;;; For widen-window.el
 
