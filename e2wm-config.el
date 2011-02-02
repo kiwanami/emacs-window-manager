@@ -370,6 +370,19 @@
              (e2wm:pst-minor-mode 1))
            (e2wm:message "** %s ^^^^^" ',function)
            )))
+     (defadvice elscreen-create (around e2wm:ad-override-els)
+       (let (default-wcfg)
+         (when (e2wm:managed-p)
+           (loop for screen in (reverse (sort (elscreen-get-screen-list) '<))
+                 for alst = (cdr (assq 'e2wm-frame-prop
+                                       (elscreen-get-screen-property screen)))
+                 for wcfg = (and alst (cdr (assq 'e2wm-save-window-configuration alst)))
+                 if wcfg
+                 do (setq default-wcfg wcfg) (return)))
+         ad-do-it
+         (when default-wcfg
+           (set-window-configuration default-wcfg))))
+
      ;; apply defadvices to some elscreen functions
      (loop for i in '(elscreen-goto 
                       elscreen-kill 
