@@ -838,13 +838,12 @@ from the given string."
 (defalias 'e2wm:pst-history-up-command 'e2wm:pst-history-forward-command)
 (defalias 'e2wm:pst-history-down-command 'e2wm:pst-history-back-command)
 
-(defvar e2wm:pst-minor-mode-hook nil)
+(defvar e2wm:pst-minor-mode-setup-hook nil "This hook is called at end of setting up pst-minor-mode.")
+(defvar e2wm:pst-minor-mode-abort-hook nil "This hook is called at end of aborting pst-minor-mode.")
 
 (defvar e2wm:pst-minor-mode nil) ; dummy
 
 ;;グローバルでマイナーモードを定義
-;;→フレームはひとつしかないことを仮定
-;;→elscreenなどに対応する必要がある
 (define-minor-mode e2wm:pst-minor-mode
   "Perspective mode"
   :init-value nil
@@ -857,8 +856,9 @@ from the given string."
   (if e2wm:pst-minor-mode
       (progn
         (e2wm:pst-minor-mode-setup)
-        (run-hooks 'e2wm:pst-minor-mode-hook))
-    (e2wm:pst-minor-mode-abort)))
+        (run-hooks 'e2wm:pst-minor-mode-setup-hook))
+    (e2wm:pst-minor-mode-abort)
+    (run-hooks 'e2wm:pst-minor-mode-abort-hook)))
 
 (defun e2wm:pst-minor-mode-setup ()
   (add-to-list 'after-make-frame-functions 'e2wm:override-after-make-frame)
@@ -886,7 +886,6 @@ from the given string."
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
       (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))
 
-  (e2wm:restore-delete-other-windows)
   (remove-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (remove-hook 'window-configuration-change-hook 
                'e2wm:override-window-cfg-change)
@@ -894,7 +893,8 @@ from the given string."
   (remove-hook 'after-save-hook 'e2wm:pst-after-save-hook)
   (remove-hook 'next-error-hook 'e2wm:select-window-point)
   (setq display-buffer-function nil)
-  (ad-deactivate-regexp "^e2wm:ad-override$"))
+  (ad-deactivate-regexp "^e2wm:ad-override$")
+  )
 
 (defun e2wm:pst-minor-mode-enable-frame ()
   (e2wm:message "## PST MM ENABLED")
@@ -902,7 +902,6 @@ from the given string."
       (setf (cdr it) e2wm:pst-minor-mode-keymap-backup))
   (setq e2wm:pst-minor-mode-keymap-backup nil)
 
-  (e2wm:override-delete-other-windows)
   (ad-activate-regexp "^e2wm:ad-override" t)
   (add-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (add-hook 'window-configuration-change-hook
@@ -1066,29 +1065,13 @@ from the given string."
 value is t, one can execute `delete-other-windows' under the e2wm
 management. For window-layout.el.")
 
-(defvar e2wm:delete-other-windows-original nil
-  "[internal] Original function definition.")
-
 (defadvice wlf:clear-windows (around e2wm:ad-override)
   (let ((e2wm:delete-other-windows-permission t))
     ad-do-it))
 
-(defun e2wm:delete-other-windows (&optional window)
-  (interactive "P")
+(defadvice delete-other-windows (around e2wm:ad-override)
   (when e2wm:delete-other-windows-permission
-    (funcall e2wm:delete-other-windows-original window)))
-
-(defun e2wm:override-delete-other-windows ()
-  (let ((func (symbol-function 'delete-other-windows)))
-    (cond
-     ((subrp func)
-      (setq e2wm:delete-other-windows-original func)
-      (fset 'delete-other-windows 'e2wm:delete-other-windows))
-     (t
-      (error "Can not override `delete-other-windows' function. [%S]" func)))))
-
-(defun e2wm:restore-delete-other-windows ()
-  (fset 'delete-other-windows e2wm:delete-other-windows-original))
+    ad-do-it))
 
 ;; コンパイルエラーのような他のウインドウへの表示をする拡張への対応
 ;; compile-goto-error の仕組みを使うものについては next-error-hook で実行

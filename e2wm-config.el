@@ -248,17 +248,21 @@
 
 ;;; For moccur
 
-;; moccurの検索結果バッファでエンター（moccur-mode-goto-occurrence）す
-;; ると、delete-other-windowsされて検索結果位置が表示されない。
-;; （基本的に delete-other-windows などを行うものは同様の挙動になる。う
-;; まく個別に対応しないで済ますアイデアが必要。）
+;; moccurの検索結果バッファでエンター（moccur-mode-goto-occurrence, moccur-grep-goto）し
+;; たときの挙動を改善する。また、マッチのプレビュー表示でカーソールが移
+;; 動しない問題はgoto-lineでウインドウの位置を修正するようにアドバイス。
 
 (eval-after-load "color-moccur"
   '(progn
 
      (defadvice moccur-mode-goto-occurrence (around e2wm:ad-override)
        ad-do-it
-       (delete-window (selected-window))
+       (delete-window (selected-window)) ; Enterでmoccurのバッファを消す（消さない方が良ければこの行をコメント）
+       (e2wm:pst-window-select-main))
+
+     (defadvice moccur-grep-goto (around e2wm:ad-override)
+       ad-do-it
+       (delete-window (selected-window)) ; Enterでmoccurのバッファを消す（消さない方が良ければこの行をコメント）
        (e2wm:pst-window-select-main))
      
      (defadvice goto-line (around e2wm:ad-override)
@@ -400,6 +404,26 @@
      (add-hook 'e2wm:post-stop-hook 'e2wm:elscreen-revert)
      ))
 
+;;; For Multi Term
+
+;; Multi Term は「dedicated」なウインドウを消さないような、簡易ウインド
+;; ウ管理の仕組みを持っている。実装としてはウインドウ系のアドバイスがい
+;; くつか入っている。MultiTermはe2wmとそういった点でウインドウ管理の機
+;; 能が重複する。そのため、共存が難しいのでウインドウ系のアドバイスにつ
+;; いてはe2wm管理下では無効にする。とりあえず完全に機能が競合する
+;; delete-other-windowsだけ無効にする。
+
+(eval-after-load "multi-term"
+  '(progn
+
+     (defun e2wm:mult-term-advices-disable ()
+       (ad-disable-advice 'delete-other-windows 'around 'multi-term-delete-other-window-advice))
+     (defun e2wm:mult-term-advices-enable ()
+       (ad-enable-advice  'delete-other-windows 'around 'multi-term-delete-other-window-advice))
+     
+     (add-hook 'e2wm:pst-minor-mode-setup-hook 'e2wm:mult-term-advices-disable)
+     (add-hook 'e2wm:pst-minor-mode-abort-hook 'e2wm:mult-term-advices-enable)
+     ))
 
 (provide 'e2wm-config)
 ;;; e2wm-config.el ends here
