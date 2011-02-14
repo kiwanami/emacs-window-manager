@@ -1070,7 +1070,7 @@ management. For window-layout.el.")
     ad-do-it))
 
 (defadvice delete-other-windows (around e2wm:ad-override)
-  (when e2wm:delete-other-windows-permission
+  (when (or e2wm:delete-other-windows-permission (not (e2wm:managed-p)))
     ad-do-it))
 
 ;; コンパイルエラーのような他のウインドウへの表示をする拡張への対応
