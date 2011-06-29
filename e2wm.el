@@ -529,7 +529,15 @@ from the given string."
     ;;継承元がシンボルだったらオブジェクトに入れ替える
     (setf (e2wm:$pst-class-extend pst-class)
           (e2wm:pst-class-get (e2wm:$pst-class-extend pst-class))))
+  (e2wm:pst-class-remove pst-class)
   (push pst-class e2wm:pst-list))
+
+(defun e2wm:pst-class-remove (pst-class)
+  (setq e2wm:pst-list
+        (loop with name = (e2wm:$pst-class-name pst-class)
+              for i in e2wm:pst-list
+              unless (equal name (e2wm:$pst-class-name i))
+              collect i)))
 
 (defun e2wm:pst-class-get (name)
   ;;パースペクティブクラスの取得
@@ -1233,6 +1241,7 @@ management. For window-layout.el.")
 
 (defun e2wm:plugin-register (name title update-function)
   ;;プラグインの登録
+  (e2wm:plugin-delete name)
   (push (make-e2wm:$plugin
          :name name
          :title title
