@@ -2275,10 +2275,15 @@ management. For window-layout.el.")
     (setq mode-line-format 
           '("-" mode-line-mule-info
             " " mode-line-position "-%-"))
-    (setq header-line-format
-          (format "[%i] %s"
-                  (length files)
-                  (expand-file-name dir)))))
+    (let* ((win (get-buffer-window (current-buffer)))
+           (width (- (or (and win (window-width win)) 90) 7)) ; 9 <= num and ellipse "..."
+           (dirname (expand-file-name dir))
+           (namelen (string-width dirname))
+           (startcol (max 0 (- namelen width))))
+      (setq header-line-format
+            (format "[%2i] %s%s"
+                    (length files) (if (< 0 startcol) "..." "")
+                    (truncate-string-to-width dirname namelen startcol))))))
 
 (defun e2wm:def-plugin-files-insert-by-name (rows-file rows-time rows-size)
   (loop for i from 0 below (length rows-file)
@@ -2524,7 +2529,7 @@ management. For window-layout.el.")
     code-wm))
 
 (defun e2wm:dp-code-switch (buf)
-  (e2wm:message "#DP CODE switch : %s" buf)
+  (e2wm:message "#DP CODE switch : %s / %S" buf (e2wm:history-recordable-p buf))
   (if (e2wm:history-recordable-p buf)
       (progn
         (e2wm:pst-show-history-main)
