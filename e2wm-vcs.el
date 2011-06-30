@@ -168,7 +168,6 @@
   nil)
 
 (defun e2wm:dp-magit-popup (buf)
-  ;;とりあえず全部subで表示してみる
   (let ((cb (current-buffer)))
     (e2wm:message "#DP MAGIT popup : %s (current %s / backup %s)" 
                   buf cb e2wm:override-window-cfg-backup))
@@ -176,7 +175,13 @@
         (wm (e2wm:pst-get-wm))
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
-     (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
+     (cond
+      ((equal buf-name magit-commit-buffer-name)
+       ;; displaying commit objects in the main window
+       (e2wm:pst-buffer-set 'main buf t nil))
+      (t
+       ;; displaying other objects in the sub window
+       (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
 
 ;; Commands / Keybindings
 
