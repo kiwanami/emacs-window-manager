@@ -240,12 +240,8 @@
   ;;switch-to-buffer, pop-to-bufferが無限ループにならないようにするマクロ。
   ;;ユーザーのアクションではなくて、内部の動作なのでこれらの関数を
   ;;本来の動きにしたい場合はこのマクロで囲む。
-  `(if e2wm:ad-now-overriding
-       (progn ,@body) ; 再帰している場合
-     (setq e2wm:ad-now-overriding t) ; 初回
-     (unwind-protect 
-         (progn ,@body) 
-       (setq e2wm:ad-now-overriding nil))))
+  `(let ((e2wm:ad-now-overriding t))
+     ,@body))
 
 ;; text / string
 
@@ -1032,7 +1028,7 @@ from the given string."
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defun e2wm:override-special-display-function (buf &optional args)
-  (e2wm:message "#SPECIAL-DISPLAY-FUNC %s" buf)
+  (e2wm:message "#SPECIAL-DISPLAY-FUNC %s / %S - %S" buf (not e2wm:ad-now-overriding) (e2wm:managed-p))
   (let (overrided)
     (when (and 
            buf 
