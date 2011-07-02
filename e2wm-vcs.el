@@ -23,7 +23,7 @@
 ;; These are e2wm perspectives for magit and dsvn.
 ;; One can change the perspective by M-x e2wm:dp-magit or e2wm:dp-svn.
 
-;; Here is a sample code to add switching perspective keybindings:
+;; Here is a sample code to add switching perspective key bindings:
 ;; (e2wm:add-keymap e2wm:pst-minor-mode-keymap '(("prefix v" . e2wm:dp-magit)) e2wm:prefix-key)
 ;; (e2wm:add-keymap e2wm:pst-minor-mode-keymap '(("prefix v" . e2wm:dp-svn)) e2wm:prefix-key)
 
@@ -92,7 +92,7 @@
   (e2wm:def-plugin-vcs-with-window
    'magit-get-top-dir
    (lambda (dir topdir)
-     (magit-log nil))
+     (magit-display-log nil))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
 
 (e2wm:plugin-register 'magit-logs
