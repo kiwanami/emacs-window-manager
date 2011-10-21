@@ -1641,13 +1641,6 @@ management. For window-layout.el.")
 ;;; imenu / Imenuで概要参照
 ;;;--------------------------------------------------
 
-;; メインとプラグインの相互作用的なデモ
-;; anything-config.el の imenu を参考に実装
-;; （文字列で比較しているのがちょっとダサイ）
-
-(defvar e2wm:def-plugin-imenu-delimiter " / ")
-(defvar e2wm:def-plugin-imenu-cached-alist nil)
-(make-variable-buffer-local 'e2wm:def-plugin-imenu-cached-alist)
 (defvar e2wm:def-plugin-imenu-cached-entries nil)
 (make-variable-buffer-local 'e2wm:def-plugin-imenu-cached-entries)
 (defvar e2wm:def-plugin-imenu-cached-tick nil)
@@ -1672,7 +1665,7 @@ management. For window-layout.el.")
             (setq pos (point))
             (erase-buffer)
             (loop for i in entries
-                  do (insert (format "%s\n" i)))
+                  do (insert i "\n"))
             (setq mode-line-format 
                   '("-" mode-line-mule-info
                     " " mode-line-position "-%-"))
@@ -1685,6 +1678,7 @@ management. For window-layout.el.")
     (set-window-point (wlf:get-window wm wname) pos)))
 
 (defun e2wm:def-plugin-imenu-entries ()
+  "[internal] Return a list of imenu items to insert the imenu buffer."
   (with-current-buffer (e2wm:history-get-main-buffer)
     (let ((tick (buffer-modified-tick)))
       (if (and (eq e2wm:def-plugin-imenu-cached-tick tick)
@@ -1694,46 +1688,56 @@ management. For window-layout.el.")
         (setq e2wm:def-plugin-imenu-cached-tick tick
               e2wm:def-plugin-imenu-cached-entries
               (condition-case nil
-                  (mapcan
-                   'e2wm:def-plugin-imenu-create-entries
-                   (setq e2wm:def-plugin-imenu-cached-alist (imenu--make-index-alist)))
-                (error nil)))
-        (setq e2wm:def-plugin-imenu-cached-entries
-              (loop for x in e2wm:def-plugin-imenu-cached-entries
-                    collect (if (stringp x) x (car x))))))))
+                  (nreverse
+                   (e2wm:def-plugin-imenu-create-entries
+                    (imenu--make-index-alist) "" nil))
+                (error nil)))))))
 
-(defun e2wm:def-plugin-imenu-create-entries (entry)
-  (if (listp (cdr entry))
-      (mapcan 
-       (lambda (sub)
-         (if (consp (cdr sub))
-             (mapcar
-              (lambda (subentry)
-                (concat (car entry) e2wm:def-plugin-imenu-delimiter subentry))
-              (e2wm:def-plugin-imenu-create-entries sub))
-           (list (concat (car entry) e2wm:def-plugin-imenu-delimiter (car sub)))))
-       (cdr entry))
-    (list entry)))
+(defun e2wm:def-plugin-imenu-create-entries (entries indent result)
+  "[internal] Make a menu item from the imenu object and return a
+string object to insert the imenu buffer."
+  (loop for i in entries do
+        (cond
+         ;; item
+         ((markerp (cdr i))
+          (let ((title (concat indent (car i)))
+                (mark (cdr i)))
+            (push (propertize title 'e2wm:imenu-mark mark) result)))
+         ;; overlay
+         ((overlayp (cdr i))
+          (let ((title (concat indent (car i)))
+                (mark (overlay-start (cdr i))))
+            (push (propertize title 'e2wm:imenu-mark mark) result)))
+         ;; cascade
+         ((listp (cdr i))
+          ;; title
+          (push (e2wm:rt (concat indent (car i)) 'e2wm:face-subtitle) result)
+          ;; contents
+          (setq result
+                (e2wm:def-plugin-imenu-create-entries
+                 (cdr i) (concat "  " indent) result)))
+         ;; ? 
+         (t nil)))
+  result)
   
 (setq imenu-default-goto-function 'imenu-default-goto-function)
 
 (defun e2wm:def-plugin-imenu-jump (elm)
-  (let ((path (split-string elm e2wm:def-plugin-imenu-delimiter))
-        (alist e2wm:def-plugin-imenu-cached-alist))
-    (if (> (length path) 1)
-        (progn
-          (setq alist (assoc (car path) alist))
-          (setq elm (cadr path))
-          (imenu (assoc elm alist)))
-      (imenu (assoc elm alist)))))
+  "[internal] Jump to the selected imenu item."
+  (let ((mark (get-text-property 0 'e2wm:imenu-mark elm)))
+    (when mark
+      (push-mark)
+      (imenu-default-goto-function elm mark))))
 
 (defun e2wm:def-plugin-imenu-jump-command ()
+  "Jump to the selected imenu item on the main window."
   (interactive)
   (let ((elm (e2wm:string-trim (thing-at-point 'line))))
     (select-window (get-buffer-window (e2wm:history-get-main-buffer)))
     (e2wm:def-plugin-imenu-jump elm)))
 
 (defun e2wm:def-plugin-imenu-show-command ()
+  "Show the selected imenu item on the main window."
   (interactive)
   (let ((elm (e2wm:string-trim (thing-at-point 'line)))
         (cwin (selected-window)))
@@ -1759,34 +1763,17 @@ management. For window-layout.el.")
 (define-derived-mode e2wm:def-plugin-imenu-mode fundamental-mode "Imenu")
 
 (defun e2wm:def-plugin-imenu-which-func ()
-  ;; which-func-modes から拝借
-  (let ((alist e2wm:def-plugin-imenu-cached-alist)
-        (minoffset (point-max)) name
-        offset pair mark imstack namestack)
-    (while (or alist imstack)
-      (if alist
-          (progn
-            (setq pair (car-safe alist)
-                  alist (cdr-safe alist))
-            (cond ((atom pair))
-                  ((imenu--subalist-p pair)
-                   (setq imstack   (cons alist imstack)
-                         namestack (cons (car pair) namestack)
-                         alist     (cdr pair)))
-                  ((number-or-marker-p (setq mark (cdr pair)))
-                   (if (>= (setq offset (- (point) mark)) 0)
-                       (if (< offset minoffset)
-                           (setq minoffset offset
-                                 name (mapconcat 
-                                       'identity
-                                       (reverse (cons 
-                                                 (car pair)
-                                                 namestack)) 
-                                       e2wm:def-plugin-imenu-delimiter)))))))
-        (setq alist     (car imstack)
-              namestack (cdr namestack)
-              imstack   (cdr imstack))))
-    name))
+  (loop with which-func = nil
+        with minoffset = (point-max)
+        for i in e2wm:def-plugin-imenu-cached-entries
+        for mark = (get-text-property 0 'e2wm:imenu-mark i)
+        if (number-or-marker-p mark)
+        do (let ((offset (- (point) mark)))
+             (if (>= offset 0)
+                 (when (< offset minoffset)
+                   (setq which-func i
+                         minoffset offset))))
+        finally return which-func))
 
 (defvar e2wm:def-plugin-imenu-timer nil)
 
@@ -1820,7 +1807,7 @@ management. For window-layout.el.")
          (when (and name (window-live-p imenu-win))
            (with-current-buffer imenu-buf
              (goto-char (point-min))
-             (let ((ps (re-search-forward (concat "^" name "$"))))
+             (let ((ps (re-search-forward (concat "^" (regexp-quote name) "$"))))
                (when ps
                  (beginning-of-line)
                  (set-window-point imenu-win (point))
