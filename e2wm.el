@@ -1037,16 +1037,17 @@ from the given string."
       (e2wm:with-advice
        (e2wm:message "#AD-SPECIAL-DISPLAY-FUNC %s" buf)
        (e2wm:history-add buf)
-       (setq overrided (e2wm:pst-pop-to-buffer (get-buffer-create buf)))))
+       (save-excursion
+         (setq overrided (e2wm:pst-pop-to-buffer (get-buffer-create buf))))))
     (if overrided
         (progn 
-          (set-buffer buf)
+          ;(set-buffer buf)
           (get-buffer-window buf)) ;return value
       (cond
        ((e2wm:managed-p)
         (e2wm:message "#DISPLAY-BUFFER / managed frame") ;;適当な場所に表示する
         (set-window-buffer (selected-window) buf)
-        (set-buffer buf) 
+        ;(set-buffer buf) 
         (selected-window)) ;return value
        (t
         (e2wm:message "#DISPLAY-BUFFER / Non managed frame ") ;;適当な場所に表示する
@@ -2669,23 +2670,29 @@ management. For window-layout.el.")
   (e2wm:message "#DP TWO switch : %s" buf)
   (let ((wm (e2wm:pst-get-wm))
         (curwin (selected-window)))
-    (if (or (eql curwin (wlf:get-window wm 'left))
-            (eql curwin (wlf:get-window wm 'right)))
-        ;;メイン画面の場合
-        (cond 
-         ((eql (get-buffer buf) (wlf:get-buffer wm 'left))
-          ;;メインと同じなら並べる
-          (e2wm:pst-update-windows)
-          (e2wm:pst-buffer-set 'right buf)
-          t)
-         ((e2wm:history-recordable-p buf)
-          ;;普通の編集対象なら履歴につっこんで更新
-          (e2wm:pst-show-history-main)
-          t)
-         (t 
-          ;;それ以外ならとりあえず表示してみる
-          nil))
-      nil)))
+    (cond
+     ((eql curwin (wlf:get-window wm 'left))
+      ;; left画面の場合
+      (cond 
+       ((eql (get-buffer buf) (wlf:get-buffer wm 'left))
+        ;; leftと同じなら並べる
+        (e2wm:pst-update-windows)
+        (e2wm:pst-buffer-set 'right buf)
+        t)
+       ((e2wm:history-recordable-p buf)
+        ;; 普通の編集対象なら履歴につっこんで更新
+        (e2wm:pst-show-history-main)
+        t)
+       (t 
+        ;; それ以外ならとりあえず表示してみる
+        nil)))
+
+     ((eql curwin (wlf:get-window wm 'right))
+      ;; right画面の場合
+      (e2wm:pst-buffer-set 'right buf)
+      (e2wm:dp-two-update-history-list)
+      nil)
+     (t nil))))
 
 (defun e2wm:dp-two-popup (buf)
   ;;記録バッファ以外はsubで表示してみる
