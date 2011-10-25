@@ -303,7 +303,8 @@ from the given string."
   text)
 
 (defun e2wm:format-byte-unit (size)
-  (cond ((> size (* 1048576 4))
+  (cond ((null size) "NA")
+        ((> size (* 1048576 4))
          (format "%s Mb" (e2wm:num (round (/ size 1048576)))))
         ((> size (* 1024 4))
          (format "%s Kb" (e2wm:num (round (/ size 1024)))))
@@ -2230,7 +2231,7 @@ string object to insert the imenu buffer."
                      (format-time-string "%Y/%m/%d %H:%M:%S" (nth 7 f))
                      (nth 8 f)
                      (if (cadr f) "d" "f")
-                     (format "%014d" (nth 8 f))
+                     (if (nth 8 f) (format "%014d" (nth 8 f)) (make-string 14 ?\ ))
                      (float-time (nth 7 f))))
            e2wm:def-plugin-files-sort-key)) rows-file rows-time rows-size rows)
     (loop for i in files
