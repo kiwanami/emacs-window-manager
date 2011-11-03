@@ -1700,7 +1700,7 @@ string object to insert the imenu buffer."
   (loop for i in entries do
         (cond
          ;; item
-         ((markerp (cdr i))
+         ((number-or-marker-p (cdr i))
           (let ((title (concat indent (car i)))
                 (mark (cdr i)))
             (push (propertize title 'e2wm:imenu-mark mark) result)))
