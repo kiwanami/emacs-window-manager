@@ -994,7 +994,7 @@ from the given string."
 
 (defadvice switch-to-buffer (around
                              e2wm:ad-override
-                             (buf &optional norecord))
+                             (buf &optional norecord force-same-window))
   (e2wm:message "#SWITCH-TO-BUFFER %s" buf)
   (let (overrided)
     (when (and buf 
