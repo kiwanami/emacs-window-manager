@@ -30,8 +30,8 @@
 ;;; Code:
 
 (require 'e2wm)
-(require 'magit)
-(require 'dsvn)
+(require 'magit nil t)
+(require 'dsvn nil t)
 
 
 ;;; Utilities
