@@ -302,6 +302,9 @@
       ((equal buf-name monky-commit-buffer-name)
        ;; displaying commit objects in the main window
        (e2wm:pst-buffer-set 'main buf t nil))
+      ((equal buf-name monky-queue-buffer-name)
+       ;; displaying queue objects in the main window
+       (e2wm:pst-buffer-set 'main buf t nil))
       (t
        ;; displaying other objects in the sub window
        (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
