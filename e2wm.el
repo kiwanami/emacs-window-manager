@@ -800,9 +800,11 @@ from the given string."
      (e2wm:pst-update-windows))))
 
 (defun e2wm:pst-after-save-hook ()
-  (e2wm:message "$$ AFTER SAVE HOOK")
-  (e2wm:pst-method-call e2wm:$pst-class-save (e2wm:pst-get-instance))
-  (e2wm:pst-update-windows))
+  (e2wm:message "$$ AFTER SAVE HOOK %S" this-command)
+  ;; 自動保存などで save-hook が呼ばれた場合は無視する
+  (when this-command
+    (e2wm:pst-method-call e2wm:$pst-class-save (e2wm:pst-get-instance))
+    (e2wm:pst-update-windows)))
 
 ;;; Commands / Key bindings / Minor Mode
 ;;;--------------------------------------------------
@@ -1063,7 +1065,9 @@ from the given string."
              (e2wm:managed-p))
     ;; killされたら履歴からも消す
     (e2wm:history-delete (current-buffer))
-    (e2wm:pst-show-history-main)))
+    (when this-command
+      ;; 自動実行だったら画面を更新しない
+      (e2wm:pst-show-history-main))))
 
 ;; delete-other-windows対策
 
