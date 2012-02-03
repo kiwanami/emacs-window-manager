@@ -144,14 +144,14 @@
    :start  'e2wm:dp-magit-start
    :switch 'e2wm:dp-magit-switch
    :popup  'e2wm:dp-magit-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-magit-leave
    :keymap 'e2wm:dp-magit-minor-mode-map))
 
 (defadvice magit-log-edit-commit (after e2wm:ad-override-magit)
   (e2wm:pst-update-windows))
 (ad-deactivate-regexp "^e2wm:ad-override-magit$")
 
-(defun e2wm:dp-vcs-leave (wm)
+(defun e2wm:dp-magit-leave (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-magit$")
   (setq prev-selected-buffer nil))
 
@@ -266,14 +266,14 @@
    :start  'e2wm:dp-monky-start
    :switch 'e2wm:dp-monky-switch
    :popup  'e2wm:dp-monky-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-vcs-monky
    :keymap 'e2wm:dp-monky-minor-mode-map))
 
 (defadvice monky-log-edit-commit (after e2wm:ad-override-monky)
   (e2wm:pst-update-windows))
 (ad-deactivate-regexp "^e2wm:ad-override-monky$")
 
-(defun e2wm:dp-vcs-leave (wm)
+(defun e2wm:dp-vcs-monky (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-monky$")
   (setq prev-selected-buffer nil))
 
@@ -405,8 +405,11 @@
    :main   'main
    :switch 'e2wm:dp-svn-switch
    :popup  'e2wm:dp-svn-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-svn-leave
    :keymap 'e2wm:dp-svn-minor-mode-map))
+
+(defun e2wm:dp-svn-leave (wm)
+  (setq prev-selected-buffer nil))
 
 (defun e2wm:dp-svn-init ()
   (let* ((svn-wm 
