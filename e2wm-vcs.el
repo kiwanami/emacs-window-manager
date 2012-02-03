@@ -80,12 +80,9 @@
         for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
         if (and (equal buf (wlf:get-buffer wm wname))
                 (e2wm:pst-window-plugin-get wm wname))
-        return (when (or (not (equal wname 'main))
-                         (equal (wlf:get-window-name wm (selected-window))
-                                'main))
-                 (wlf:select wm wname)
-                 (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
-                 t)))
+        return (progn (wlf:select wm wname)
+                      (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
+                      t)))
 
 
 
@@ -135,11 +132,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:upper-size-ratio 0.6) main sub)
+         (- status (- main sub))
          (- (:upper-size-ratio 0.4) branches logs))))
 
 (defvar e2wm:c-magit-winfo
-  '((:name main     :plugin magit-status)
+  '((:name main)
+    (:name status   :plugin magit-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
@@ -196,6 +194,9 @@
         ((equal buf-name magit-commit-buffer-name)
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
+        ((buffer-file-name buf)
+         ;; displaying file buffer in the main window
+         (e2wm:pst-buffer-set 'main buf t t))
         (t
          ;; displaying other objects in the sub window
          (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
@@ -258,11 +259,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:upper-size-ratio 0.6) main sub)
+         (- status (- main sub))
          (- (:upper-size-ratio 0.4) branches logs))))
 
 (defvar e2wm:c-monky-winfo
-  '((:name main     :plugin monky-status)
+  '((:name main)
+    (:name status   :plugin monky-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
@@ -321,8 +323,11 @@
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
         ((equal buf-name monky-queue-buffer-name)
-         ;; displaying queue objects in the main window
-         (e2wm:pst-buffer-set 'main buf t nil))
+         ;; displaying queue objects in the status window
+         (e2wm:pst-buffer-set 'status buf t nil))
+        ((buffer-file-name buf)
+         ;; displaying file buffer in the main window
+         (e2wm:pst-buffer-set 'main buf t t))
         (t
          ;; displaying other objects in the sub window
          (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
@@ -402,11 +407,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:lower-size-ratio 0.4) main sub)
+         (- status (- main sub))
          logs)))
 
 (defvar e2wm:c-svn-winfo
-  '((:name main     :plugin svn-status)
+  '((:name main)
+    (:name status   :plugin svn-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
