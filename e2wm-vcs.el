@@ -74,6 +74,20 @@
        (wlf:set-buffer wm (wlf:window-name winfo) 
                        (funcall na-buffer-func)))))))
 
+(defun e2wm:vcs-select-if-plugin (buf)
+  (e2wm:message "#vcs-select-if-plugin")
+  (loop with wm = (e2wm:pst-get-wm)
+        for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
+        if (and (equal buf (wlf:get-buffer wm wname))
+                (e2wm:pst-window-plugin-get wm wname))
+        return (when (or (not (equal wname 'main))
+                         (equal (wlf:get-window-name wm (selected-window))
+                                'main))
+                 (wlf:select wm wname)
+                 (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
+                 t)))
+
+
 
 ;;; magit / plugins
 ;;;--------------------------------------------------
@@ -167,23 +181,24 @@
 
 (defun e2wm:dp-magit-switch (buf)
   (e2wm:message "#DP MAGIT switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-magit-popup (buf)
   (let ((cb (current-buffer)))
     (e2wm:message "#DP MAGIT popup : %s (current %s / backup %s)" 
                   buf cb e2wm:override-window-cfg-backup))
-  (let ((buf-name (buffer-name buf))
-        (wm (e2wm:pst-get-wm))
-        (not-minibufp (= 0 (minibuffer-depth))))
-    (e2wm:with-advice
-     (cond
-      ((equal buf-name magit-commit-buffer-name)
-       ;; displaying commit objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      (t
-       ;; displaying other objects in the sub window
-       (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
+  (unless (e2wm:vcs-select-if-plugin buf)
+    (let ((buf-name (buffer-name buf))
+          (wm (e2wm:pst-get-wm))
+          (not-minibufp (= 0 (minibuffer-depth))))
+      (e2wm:with-advice
+       (cond
+        ((equal buf-name magit-commit-buffer-name)
+         ;; displaying commit objects in the main window
+         (e2wm:pst-buffer-set 'main buf t nil))
+        (t
+         ;; displaying other objects in the sub window
+         (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
 
 ;; Commands / Keybindings
 
@@ -289,26 +304,28 @@
 
 (defun e2wm:dp-monky-switch (buf)
   (e2wm:message "#DP MONKY switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-monky-popup (buf)
   (let ((cb (current-buffer)))
     (e2wm:message "#DP MONKY popup : %s (current %s / backup %s)"
                   buf cb e2wm:override-window-cfg-backup))
-  (let ((buf-name (buffer-name buf))
-        (wm (e2wm:pst-get-wm))
-        (not-minibufp (= 0 (minibuffer-depth))))
-    (e2wm:with-advice
-     (cond
-      ((equal buf-name monky-commit-buffer-name)
-       ;; displaying commit objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      ((equal buf-name monky-queue-buffer-name)
-       ;; displaying queue objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      (t
-       ;; displaying other objects in the sub window
-       (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
+  (unless (e2wm:vcs-select-if-plugin buf)
+    (let ((buf-name (buffer-name buf))
+          (wm (e2wm:pst-get-wm))
+          (not-minibufp (= 0 (minibuffer-depth))))
+      (e2wm:with-advice
+       (cond
+        ((e2wm:vcs-select-if-plugin buf))
+        ((equal buf-name monky-commit-buffer-name)
+         ;; displaying commit objects in the main window
+         (e2wm:pst-buffer-set 'main buf t nil))
+        ((equal buf-name monky-queue-buffer-name)
+         ;; displaying queue objects in the main window
+         (e2wm:pst-buffer-set 'main buf t nil))
+        (t
+         ;; displaying other objects in the sub window
+         (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
 
 ;; Commands / Keybindings
 
@@ -420,7 +437,7 @@
 
 (defun e2wm:dp-svn-switch (buf)
   (e2wm:message "#DP SVN switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-svn-popup (buf)
   (let ((cb (current-buffer)))
