@@ -194,6 +194,9 @@
         ((equal buf-name magit-commit-buffer-name)
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
+        ((string-match "^\\*magit: .*\\*$" buf-name)
+         ;; displaying status object in the status window
+         (e2wm:pst-buffer-set 'status buf t t))
         ((buffer-file-name buf)
          ;; displaying file buffer in the main window
          (e2wm:pst-buffer-set 'main buf t t))
@@ -322,9 +325,12 @@
         ((equal buf-name monky-commit-buffer-name)
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
+        ((string-match "^\\*monky: .*\\*$" buf-name)
+         ;; displaying status object in the status window
+         (e2wm:pst-buffer-set 'status buf t t))
         ((equal buf-name monky-queue-buffer-name)
          ;; displaying queue objects in the status window
-         (e2wm:pst-buffer-set 'status buf t nil))
+         (e2wm:pst-buffer-set 'status buf t t))
         ((buffer-file-name buf)
          ;; displaying file buffer in the main window
          (e2wm:pst-buffer-set 'main buf t t))
