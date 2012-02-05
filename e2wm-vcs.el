@@ -175,6 +175,7 @@
           (wlf:no-layout e2wm:c-magit-recipe e2wm:c-magit-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer magit-wm 'main buf)
     magit-wm))
 
 (defun e2wm:dp-magit-switch (buf)
@@ -305,6 +306,7 @@
           (wlf:no-layout e2wm:c-monky-recipe e2wm:c-monky-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer monky-wm 'main buf)
     monky-wm))
 
 (defun e2wm:dp-monky-switch (buf)
@@ -445,6 +447,7 @@
           (wlf:no-layout e2wm:c-svn-recipe e2wm:c-svn-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer svn-wm 'main buf)
     svn-wm))
 
 (defun e2wm:dp-svn-switch (buf)
