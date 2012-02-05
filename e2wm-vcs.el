@@ -323,7 +323,6 @@
           (not-minibufp (= 0 (minibuffer-depth))))
       (e2wm:with-advice
        (cond
-        ((e2wm:vcs-select-if-plugin buf))
         ((equal buf-name monky-commit-buffer-name)
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
