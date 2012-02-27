@@ -1873,7 +1873,7 @@ string object to insert the imenu buffer."
         (buffer-disable-undo buf)))
     (let (proc)
       (condition-case err
-          (setq proc (start-process "WM:top" tmpbuf "top" "-b -n 1"))
+          (setq proc (start-process "WM:top" tmpbuf "top" "-b" "-n" "1"))
         (nil 
          (with-current-buffer buf
            (erase-buffer)
