@@ -74,6 +74,17 @@
        (wlf:set-buffer wm (wlf:window-name winfo) 
                        (funcall na-buffer-func)))))))
 
+(defun e2wm:vcs-select-if-plugin (buf)
+  (e2wm:message "#vcs-select-if-plugin")
+  (loop with wm = (e2wm:pst-get-wm)
+        for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
+        if (and (equal buf (wlf:get-buffer wm wname))
+                (e2wm:pst-window-plugin-get wm wname))
+        return (progn (wlf:select wm wname)
+                      (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
+                      t)))
+
+
 
 ;;; magit / plugins
 ;;;--------------------------------------------------
@@ -121,11 +132,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:upper-size-ratio 0.6) main sub)
+         (- status (- main sub))
          (- (:upper-size-ratio 0.4) branches logs))))
 
 (defvar e2wm:c-magit-winfo
-  '((:name main     :plugin magit-status)
+  '((:name main)
+    (:name status   :plugin magit-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
@@ -144,14 +156,14 @@
    :start  'e2wm:dp-magit-start
    :switch 'e2wm:dp-magit-switch
    :popup  'e2wm:dp-magit-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-magit-leave
    :keymap 'e2wm:dp-magit-minor-mode-map))
 
 (defadvice magit-log-edit-commit (after e2wm:ad-override-magit)
   (e2wm:pst-update-windows))
 (ad-deactivate-regexp "^e2wm:ad-override-magit$")
 
-(defun e2wm:dp-vcs-leave (wm)
+(defun e2wm:dp-magit-leave (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-magit$")
   (setq prev-selected-buffer nil))
 
@@ -163,27 +175,35 @@
           (wlf:no-layout e2wm:c-magit-recipe e2wm:c-magit-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer magit-wm 'main buf)
     magit-wm))
 
 (defun e2wm:dp-magit-switch (buf)
   (e2wm:message "#DP MAGIT switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-magit-popup (buf)
   (let ((cb (current-buffer)))
     (e2wm:message "#DP MAGIT popup : %s (current %s / backup %s)" 
                   buf cb e2wm:override-window-cfg-backup))
-  (let ((buf-name (buffer-name buf))
-        (wm (e2wm:pst-get-wm))
-        (not-minibufp (= 0 (minibuffer-depth))))
-    (e2wm:with-advice
-     (cond
-      ((equal buf-name magit-commit-buffer-name)
-       ;; displaying commit objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      (t
-       ;; displaying other objects in the sub window
-       (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
+  (unless (e2wm:vcs-select-if-plugin buf)
+    (let ((buf-name (buffer-name buf))
+          (wm (e2wm:pst-get-wm))
+          (not-minibufp (= 0 (minibuffer-depth))))
+      (e2wm:with-advice
+       (cond
+        ((equal buf-name magit-commit-buffer-name)
+         ;; displaying commit objects in the main window
+         (e2wm:pst-buffer-set 'main buf t nil))
+        ((string-match "^\\*magit: .*\\*$" buf-name)
+         ;; displaying status object in the status window
+         (e2wm:pst-buffer-set 'status buf t t))
+        ((buffer-file-name buf)
+         ;; displaying file buffer in the main window
+         (e2wm:pst-buffer-set 'main buf t t))
+        (t
+         ;; displaying other objects in the sub window
+         (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
 
 ;; Commands / Keybindings
 
@@ -243,11 +263,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:upper-size-ratio 0.6) main sub)
+         (- status (- main sub))
          (- (:upper-size-ratio 0.4) branches logs))))
 
 (defvar e2wm:c-monky-winfo
-  '((:name main     :plugin monky-status)
+  '((:name main)
+    (:name status   :plugin monky-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
@@ -266,14 +287,14 @@
    :start  'e2wm:dp-monky-start
    :switch 'e2wm:dp-monky-switch
    :popup  'e2wm:dp-monky-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-vcs-monky
    :keymap 'e2wm:dp-monky-minor-mode-map))
 
 (defadvice monky-log-edit-commit (after e2wm:ad-override-monky)
   (e2wm:pst-update-windows))
 (ad-deactivate-regexp "^e2wm:ad-override-monky$")
 
-(defun e2wm:dp-vcs-leave (wm)
+(defun e2wm:dp-vcs-monky (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-monky$")
   (setq prev-selected-buffer nil))
 
@@ -285,30 +306,38 @@
           (wlf:no-layout e2wm:c-monky-recipe e2wm:c-monky-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer monky-wm 'main buf)
     monky-wm))
 
 (defun e2wm:dp-monky-switch (buf)
   (e2wm:message "#DP MONKY switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-monky-popup (buf)
   (let ((cb (current-buffer)))
     (e2wm:message "#DP MONKY popup : %s (current %s / backup %s)"
                   buf cb e2wm:override-window-cfg-backup))
-  (let ((buf-name (buffer-name buf))
-        (wm (e2wm:pst-get-wm))
-        (not-minibufp (= 0 (minibuffer-depth))))
-    (e2wm:with-advice
-     (cond
-      ((equal buf-name monky-commit-buffer-name)
-       ;; displaying commit objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      ((equal buf-name monky-queue-buffer-name)
-       ;; displaying queue objects in the main window
-       (e2wm:pst-buffer-set 'main buf t nil))
-      (t
-       ;; displaying other objects in the sub window
-       (e2wm:pst-buffer-set 'sub buf t not-minibufp))))))
+  (unless (e2wm:vcs-select-if-plugin buf)
+    (let ((buf-name (buffer-name buf))
+          (wm (e2wm:pst-get-wm))
+          (not-minibufp (= 0 (minibuffer-depth))))
+      (e2wm:with-advice
+       (cond
+        ((equal buf-name monky-commit-buffer-name)
+         ;; displaying commit objects in the main window
+         (e2wm:pst-buffer-set 'main buf t nil))
+        ((string-match "^\\*monky: .*\\*$" buf-name)
+         ;; displaying status object in the status window
+         (e2wm:pst-buffer-set 'status buf t t))
+        ((equal buf-name monky-queue-buffer-name)
+         ;; displaying queue objects in the status window
+         (e2wm:pst-buffer-set 'status buf t t))
+        ((buffer-file-name buf)
+         ;; displaying file buffer in the main window
+         (e2wm:pst-buffer-set 'main buf t t))
+        (t
+         ;; displaying other objects in the sub window
+         (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
 
 ;; Commands / Keybindings
 
@@ -385,11 +414,12 @@
       (- (:upper-size-ratio 0.7)
          files history)
       (| (:right-max-size 45)
-         (- (:lower-size-ratio 0.4) main sub)
+         (- status (- main sub))
          logs)))
 
 (defvar e2wm:c-svn-winfo
-  '((:name main     :plugin svn-status)
+  '((:name main)
+    (:name status   :plugin svn-status)
     (:name files    :plugin files)
     (:name history  :plugin history-list)
     (:name sub      :buffer nil :default-hide t)
@@ -405,19 +435,23 @@
    :main   'main
    :switch 'e2wm:dp-svn-switch
    :popup  'e2wm:dp-svn-popup
-   :leave  'e2wm:dp-vcs-leave
+   :leave  'e2wm:dp-svn-leave
    :keymap 'e2wm:dp-svn-minor-mode-map))
+
+(defun e2wm:dp-svn-leave (wm)
+  (setq prev-selected-buffer nil))
 
 (defun e2wm:dp-svn-init ()
   (let* ((svn-wm 
           (wlf:no-layout e2wm:c-svn-recipe e2wm:c-svn-winfo))
          (buf (or prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
+    (wlf:set-buffer svn-wm 'main buf)
     svn-wm))
 
 (defun e2wm:dp-svn-switch (buf)
   (e2wm:message "#DP SVN switch : %s" buf)
-  nil)
+  (e2wm:vcs-select-if-plugin buf))
 
 (defun e2wm:dp-svn-popup (buf)
   (let ((cb (current-buffer)))
