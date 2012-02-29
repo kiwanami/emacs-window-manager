@@ -74,16 +74,18 @@
        (wlf:set-buffer wm (wlf:window-name winfo) 
                        (funcall na-buffer-func)))))))
 
+(defvar e2wm:vcs-select-if-plugin nil "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
+
 (defun e2wm:vcs-select-if-plugin (buf)
   (e2wm:message "#vcs-select-if-plugin")
-  (loop with wm = (e2wm:pst-get-wm)
-        for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
-        if (and (equal buf (wlf:get-buffer wm wname))
-                (e2wm:pst-window-plugin-get wm wname))
-        return (progn (wlf:select wm wname)
-                      (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
-                      t)))
-
+  (if e2wm:vcs-select-if-plugin 
+      (loop with wm = (e2wm:pst-get-wm)
+            for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
+            if (and (equal buf (wlf:get-buffer wm wname))
+                    (e2wm:pst-window-plugin-get wm wname))
+            return (progn (wlf:select wm wname)
+                          (e2wm:message "#vcs-select-if-plugin wname: %s" wname)
+                          t))))
 
 
 ;;; magit / plugins
