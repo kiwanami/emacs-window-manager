@@ -1009,7 +1009,7 @@ from the given string."
     (if overrided
         (progn
           (set-buffer buf)
-          (setq ad-return-value buf))
+          (setq ad-return-value (get-buffer-create buf)))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defadvice pop-to-buffer (around 
@@ -1027,7 +1027,7 @@ from the given string."
     (if overrided
         (progn 
           (set-buffer buf)
-          (setq ad-return-value buf))
+          (setq ad-return-value (get-buffer-create buf)))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
 (defun e2wm:override-special-display-function (buf &optional args)
