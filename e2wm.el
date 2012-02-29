@@ -1411,6 +1411,7 @@ management. For window-layout.el.")
       (with-current-buffer buf
         (e2wm:def-plugin-history-list-mode)
         (setq buffer-read-only t)
+        (setq truncate-lines t)
         (buffer-disable-undo buf)
         (hl-line-mode 1)))
     (with-current-buffer buf
@@ -1519,6 +1520,7 @@ management. For window-layout.el.")
       (with-current-buffer buf
         (e2wm:def-plugin-history-list2-mode)
         (setq buffer-read-only t)
+        (setq truncate-lines t)
         (buffer-disable-undo buf)
         (hl-line-mode 1)))
     (with-current-buffer buf
@@ -1660,6 +1662,7 @@ management. For window-layout.el.")
       (with-current-buffer buf
         (e2wm:def-plugin-imenu-mode)
         (setq buffer-read-only t)
+        (setq truncate-lines t)
         (buffer-disable-undo buf)
         (hl-line-mode 1))
       (e2wm:def-plugin-imenu-start-timer))
@@ -2117,6 +2120,7 @@ string object to insert the imenu buffer."
         (set (make-local-variable 'e2wm:def-plugin-files-sort-key) opt-sort-key)
         (set (make-local-variable 'e2wm:def-plugin-files-hide-hidden-files) opt-hide-hidden)
         (setq buffer-read-only t)
+        (setq truncate-lines t)
         (buffer-disable-undo dbuf)
         (setq pos (point-min))
         (hl-line-mode 1)))
