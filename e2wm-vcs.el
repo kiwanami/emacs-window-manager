@@ -78,7 +78,7 @@
 
 (defun e2wm:vcs-select-if-plugin (buf)
   (e2wm:message "#vcs-select-if-plugin")
-  (if e2wm:vcs-select-if-plugin 
+  (if e2wm:c-vcs-select-if-plugin
       (loop with wm = (e2wm:pst-get-wm)
             for wname in (mapcar 'wlf:window-name (wlf:wset-winfo-list wm))
             if (and (equal buf (wlf:get-buffer wm wname))
