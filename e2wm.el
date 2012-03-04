@@ -780,13 +780,17 @@ from the given string."
       (wlf:select wm main))))
 
 (defun e2wm:pst-window-toggle (window-name &optional selectp next-window)
-  ;;指定したウインドウの表示をトグルする
+  "Toggle visibility of the window specified by WINDOW-NAME.
+If SELECTP is non-nil, it selects that window when opening it.
+NEXT-WINDOW specifies the window to select when closing the
+WINDOW-NAME window.  This function returns the name of the
+selected window, or nil if none is selected."
   (let ((wm (e2wm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
       (wlf:toggle wm window-name)
       (if (wlf:window-displayed-p wm window-name)
-          (and selectp (wlf:select wm window-name))
-        (and next-window (wlf:select wm next-window))))))
+          (when selectp (wlf:select wm window-name) window-name)
+        (when next-window (wlf:select wm next-window) next-window)))))
 
 (defun e2wm:pst-show-history-main ()
   ;;パースペクティブの「メイン」ウインドウ（もしあれば）に履歴のトップ
