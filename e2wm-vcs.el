@@ -74,7 +74,7 @@
        (wlf:set-buffer wm (wlf:window-name winfo) 
                        (funcall na-buffer-func)))))))
 
-(defvar e2wm:vcs-select-if-plugin nil "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
+(defvar e2wm:c-vcs-select-if-plugin nil "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
 
 (defun e2wm:vcs-select-if-plugin (buf)
   (e2wm:message "#vcs-select-if-plugin")
