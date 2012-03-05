@@ -274,8 +274,10 @@ from the given string."
   :group 'e2wm)
 
 (defface e2wm:face-subtitle
-  '((((class color))
-     :foreground "Gray10" :height 1.2 :inherit variable-pitch)
+  '((((class color) (background light))
+     (:foreground "Gray10" :height 1.2 :inherit variable-pitch))
+    (((class color) (background dark))
+     (:foreground "Gray90" :height 1.2 :inherit variable-pitch))
     (t :height 1.2 :inherit variable-pitch))
   "Face for e2wm titles at level 2."
   :group 'e2wm)
