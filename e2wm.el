@@ -542,6 +542,13 @@ from the given string."
   ;;パースペクティブクラスの取得
   (e2wm:find name 'e2wm:$pst-class-name e2wm:pst-list))
 
+(defun e2wm:pst-class-abstract-p (pst-class)
+  "Return non-`nil' when PST-CLASS does not have all mandatory
+slots (i.e., `:init' and `:title')."
+  (and pst-class
+       (not (e2wm:$pst-class-init pst-class))
+       (not (e2wm:$pst-class-title pst-class))))
+
 ;;e2wm:$pst(perspective) インスタンス構造体
 ;; name    : このパースペクティブの名前、シンボル
 ;; wm      : wlfレイアウトオブジェクト
@@ -958,11 +965,12 @@ selected window, or nil if none is selected."
 ;; 好みのパースペクティブのセットを作って選べるようにする
 
 (defun e2wm:pstset-defaults()
-  ;;baseとarray以外を全部つっこむ
+  ;;abstract classとarray以外を全部つっこむ
   (e2wm:pstset-define
    (nreverse
     (loop for i in e2wm:pst-list
-          unless (memq (e2wm:$pst-class-name i) '(base array))
+          unless (or (memq (e2wm:$pst-class-name i) '(array))
+                     (e2wm:pst-class-abstract-p i))
           collect (e2wm:$pst-class-name i)))))
 
 (defun e2wm:pstset-define (names)
