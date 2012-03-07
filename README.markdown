@@ -132,11 +132,9 @@ TODO...
 - **extend** (_symbol_):
   このパースペクティブの継承元名。
   以下のものでこのクラスの定義が `nil` だったら継承元を呼ぶ。
-  もしくは、`(e2wm:$pst-class-super)` （dynamic bind関数）を呼ぶ。
 
 - **init** (_function()_, 必須):
   このパースペクティブのコンストラクタ。
-  継承元を呼ぶ場合は `(e2wm:$pst-class-super)` （dynamic bind関数）を呼ぶ。
   返値として `wset` 構造体を返す。
   基本的に wset 構造体だけを返すようにして、レイアウトや
   必要なフックなどのセットアップが必要であれば下のstartで行う。
@@ -184,6 +182,9 @@ TODO...
   `after-save-hook` で呼ばれる。
   選択されているパースペクティブだけ作用。nilだと何もしない。
 
+関数を入れるスロットで継承元を呼ぶ場合は `(e2wm:$pst-class-super)`
+（dynamic bind関数）を引数無しで呼ぶ。
+
 
 #### e2wm:$pst(perspective) インスタンス構造体
 
@@ -193,6 +194,7 @@ TODO...
   wlfレイアウトオブジェクト
 - **type** :
   class オブジェクトへの参照
+
 
 #### e2wm:$wcfg ウインドウ配置構造体
 
