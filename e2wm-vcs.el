@@ -152,6 +152,7 @@
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
    :name   'magit
+   :extend 'base
    :title  "Magit"
    :init   'e2wm:dp-magit-init
    :main   'main
@@ -283,6 +284,7 @@
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'monky
+   :extend 'base
    :title  "Monky"
    :init   'e2wm:dp-monky-init
    :main   'main
@@ -432,6 +434,7 @@
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'svn
+   :extend 'base
    :title  "Svn"
    :init   'e2wm:dp-svn-init
    :main   'main
