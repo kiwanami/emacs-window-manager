@@ -140,7 +140,7 @@ TODO...
   返値として `wset` 構造体を返す。
   基本的に wset 構造体だけを返すようにして、レイアウトや
   必要なフックなどのセットアップが必要であれば下のstartで行う。
-  init, start で使える dynamic bind 変数 : prev-selected-buffer
+  init で使える dynamic bind 変数 : `prev-selected-buffer`。
 
 - **title** (_string_, 必須):
   このパースペクティブのタイトル（人が読む用）。
@@ -153,6 +153,7 @@ TODO...
   レイアウトや必要なフックなどのセットアップを行う。引数：wm。
   この関数がnilなら何もしない。
   （leaveで一時中断して後で再度startが呼ばれることがある。）
+  start で使える dynamic bind 変数 : `prev-selected-buffer`。
 
 - **update** (_function(wm)_):
   wlfの各windowを更新する際に呼ばれる関数。引数：wm。
@@ -161,16 +162,16 @@ TODO...
   ウインドウの構成の変更や履歴を戻ったりするたびに呼ばれる。
 
 - **switch** (_function(buffer)_):
-  switch-to-bufferを乗っ取る関数。引数：buffer。
+  `switch-to-buffer` を乗っ取る関数。引数：buffer。
   この関数がnilなら何もしない。返値でnilを返すと本来の動作、
   それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
-  プラグインの更新などが必要であればe2wm:pst-update-windowsを呼ぶこと。
+  プラグインの更新などが必要であれば `e2wm:pst-update-windows` を呼ぶこと。
 
 - **popup** (_function(buffer)_):
-  pop-to-buffer, special-display-func を乗っ取る関数。引数：buffer。
+  `pop-to-buffer`, `special-display-func` を乗っ取る関数。引数：buffer。
   この関数がnilなら何もしない。返値でnilを返すと本来の動作、
   それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
-  プラグインの更新などが必要であればe2wm:pst-update-windowsを呼ぶこと。
+  プラグインの更新などが必要であれば `e2wm:pst-update-windows` を呼ぶこと。
 
 - **leave** (_function(wm)_):
   このパースペクティブを終了する際に呼ばれる関数。引数：wm。
@@ -180,7 +181,7 @@ TODO...
   このパースペクティブで有効にするキーマップのシンボル。nilだと何も設定しない。
 
 - **save** (_function()_):
-  after-save-hook で呼ばれる。
+  `after-save-hook` で呼ばれる。
   選択されているパースペクティブだけ作用。nilだと何もしない。
 
 
@@ -196,7 +197,7 @@ TODO...
 #### e2wm:$wcfg ウインドウ配置構造体
 
 - **wcfg** :
-  本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
+  本来の `current-window-configuration` でとれるウインドウ配置オブジェクト
 - **pst** :
   パースペクティブのインスタンスのコピー
 - **count** :
