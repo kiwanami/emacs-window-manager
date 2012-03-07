@@ -99,6 +99,118 @@ TODO...
 
 ### プラグインの作成
 
+### 略語、表記など
+
+- `pst`                  : perspective
+- `e2wm:c-`              : カスタマイズ変数
+- `e2wm:$`               : 構造体定義
+
+- `e2wm:history-`        : 履歴管理
+- `e2wm:pst-`            : パースペクティブフレームワーク
+- `e2wm:pstset-`         : パースペクティブセット
+- `e2wm:ad-`             : アドバイス（switch-to-buffer, pop-to-bufferなど）
+- `e2wm:plugin-`         : プラグインフレームワーク
+- `e2wm:menu-`           : メニュー
+- `e2wm:def-plugin-`     : プラグイン定義
+- `e2wm:dp-`             : パースペクティブ定義
+  + `e2wm:dp-code-`      :   code
+  + `e2wm:dp-doc-`       :   doc
+  + `e2wm:dp-two-`       :   two
+  + `e2wm:dp-dashboard-` :   dashboard
+  + `e2wm:dp-array-`     :   array
+
+
+### 構造体
+
+#### e2wm:$pst-class 構造体
+
+この構造体でパースペクティブの定義を行う。
+
+- **name** (_symbol_, 必須):
+  このパースペクティブの名前。
+
+- **extend** (_symbol_):
+  このパースペクティブの継承元名。
+  以下のものでこのクラスの定義が `nil` だったら継承元を呼ぶ。
+  もしくは、`(e2wm:$pst-class-super)` （dynamic bind関数）を呼ぶ。
+
+- **init** (_function()_, 必須):
+  このパースペクティブのコンストラクタ。
+  継承元を呼ぶ場合は `(e2wm:$pst-class-super)` （dynamic bind関数）を呼ぶ。
+  返値として `wset` 構造体を返す。
+  基本的に wset 構造体だけを返すようにして、レイアウトや
+  必要なフックなどのセットアップが必要であれば下のstartで行う。
+  init, start で使える dynamic bind 変数 : prev-selected-buffer
+
+- **title** (_string_, 必須):
+  このパースペクティブのタイトル（人が読む用）。
+
+- **main** (_symbol_):
+  wlfのウインドウレイアウトのうち、デフォルトでフォーカスを当てるべき場所の名前。
+  nilなら適当に選ぶ。
+
+- **start** (_function(wm)_):
+  レイアウトや必要なフックなどのセットアップを行う。引数：wm。
+  この関数がnilなら何もしない。
+  （leaveで一時中断して後で再度startが呼ばれることがある。）
+
+- **update** (_function(wm)_):
+  wlfの各windowを更新する際に呼ばれる関数。引数：wm。
+  この関数がnilなら何もしない。
+  各Windowのプラグインの更新が行われる前に呼ばれる。
+  ウインドウの構成の変更や履歴を戻ったりするたびに呼ばれる。
+
+- **switch** (_function(buffer)_):
+  switch-to-bufferを乗っ取る関数。引数：buffer。
+  この関数がnilなら何もしない。返値でnilを返すと本来の動作、
+  それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
+  プラグインの更新などが必要であればe2wm:pst-update-windowsを呼ぶこと。
+
+- **popup** (_function(buffer)_):
+  pop-to-buffer, special-display-func を乗っ取る関数。引数：buffer。
+  この関数がnilなら何もしない。返値でnilを返すと本来の動作、
+  それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
+  プラグインの更新などが必要であればe2wm:pst-update-windowsを呼ぶこと。
+
+- **leave** (_function(wm)_):
+  このパースペクティブを終了する際に呼ばれる関数。引数：wm。
+  この関数がnilなら何もしない。
+
+- **keymap** (_keymap_):
+  このパースペクティブで有効にするキーマップのシンボル。nilだと何も設定しない。
+
+- **save** (_function()_):
+  after-save-hook で呼ばれる。
+  選択されているパースペクティブだけ作用。nilだと何もしない。
+
+
+#### e2wm:$pst(perspective) インスタンス構造体
+
+- **name** :
+  このパースペクティブの名前、シンボル
+- **wm** :
+  wlfレイアウトオブジェクト
+- **type** :
+  class オブジェクトへの参照
+
+#### e2wm:$wcfg ウインドウ配置構造体
+
+- **wcfg** :
+  本来のcurrent-window-configurationでとれるウインドウ配置オブジェクト
+- **pst** :
+  パースペクティブのインスタンスのコピー
+- **count** :
+  デバッグ用カウンタ
+
+
+#### e2wm:$plugin構造体
+
+- **name** :
+  プラグインの symbol
+- **title** :
+  人が読む用のプラグインの名前
+- **update** :
+  プラグイン本体の関数
 
 
 ## ライセンスなど
