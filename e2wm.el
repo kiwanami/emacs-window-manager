@@ -542,6 +542,13 @@ from the given string."
   ;;パースペクティブクラスの取得
   (e2wm:find name 'e2wm:$pst-class-name e2wm:pst-list))
 
+(defun e2wm:pst-class-abstract-p (pst-class)
+  "Return non-`nil' when PST-CLASS does not have all mandatory
+slots (i.e., `:init' and `:title')."
+  (and pst-class
+       (not (e2wm:$pst-class-init pst-class))
+       (not (e2wm:$pst-class-title pst-class))))
+
 ;;e2wm:$pst(perspective) インスタンス構造体
 ;; name    : このパースペクティブの名前、シンボル
 ;; wm      : wlfレイアウトオブジェクト
@@ -640,9 +647,8 @@ from the given string."
        (e2wm:aif (e2wm:$pst-main instance)
            (wlf:select wm it)))
      ;;パースペクティブ固有の処理
+     ;;プラグイン更新は `e2wm:dp-base-update' で行われる
      (e2wm:pst-method-call e2wm:$pst-class-update instance wm)
-     ;;プラグイン更新実行
-     (e2wm:plugin-exec-update (selected-frame) wm)
      )) t)
 
 (defun e2wm:pst-switch-to-buffer (buf)
@@ -959,11 +965,12 @@ selected window, or nil if none is selected."
 ;; 好みのパースペクティブのセットを作って選べるようにする
 
 (defun e2wm:pstset-defaults()
-  ;;array以外を全部つっこむ
+  ;;abstract classとarray以外を全部つっこむ
   (e2wm:pstset-define
    (nreverse
     (loop for i in e2wm:pst-list
-          unless (eq (e2wm:$pst-class-name i) 'array)
+          unless (or (memq (e2wm:$pst-class-name i) '(array))
+                     (e2wm:pst-class-abstract-p i))
           collect (e2wm:$pst-class-name i)))))
 
 (defun e2wm:pstset-define (names)
@@ -2479,6 +2486,19 @@ string object to insert the imenu buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Perspective Definition
 
+;;; base / A base class for perspectives
+;;;--------------------------------------------------
+
+(e2wm:pst-class-register
+  (make-e2wm:$pst-class
+   :name   'base
+   :update 'e2wm:dp-base-update))
+
+(defun e2wm:dp-base-update (wm)
+  ;;プラグイン更新実行
+  (e2wm:plugin-exec-update (selected-frame) wm))
+
+
 ;;; code / Code editing perspective
 ;;;--------------------------------------------------
 
@@ -2505,6 +2525,7 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
    :name   'code
+   :extend 'base
    :title  "Coding"
    :init   'e2wm:dp-code-init
    :main   'main
@@ -2641,6 +2662,7 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'two
+   :extend 'base
    :title  "Two Columns"
    :init   'e2wm:dp-two-init
    :main   'left
@@ -2855,6 +2877,7 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
    :name   'doc
+   :extend 'base
    :init   'e2wm:dp-doc-init
    :title  "Document"
    :main   'left

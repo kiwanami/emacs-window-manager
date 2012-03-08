@@ -152,6 +152,7 @@
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
    :name   'magit
+   :extend 'base
    :title  "Magit"
    :init   'e2wm:dp-magit-init
    :main   'main
@@ -283,10 +284,12 @@
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'monky
+   :extend 'base
    :title  "Monky"
    :init   'e2wm:dp-monky-init
    :main   'main
    :start  'e2wm:dp-monky-start
+   :update 'e2wm:dp-monky-update
    :switch 'e2wm:dp-monky-switch
    :popup  'e2wm:dp-monky-popup
    :leave  'e2wm:dp-vcs-monky
@@ -310,6 +313,10 @@
                   (e2wm:history-get-main-buffer))))
     (wlf:set-buffer monky-wm 'main buf)
     monky-wm))
+
+(defun e2wm:dp-monky-update (wm)
+  (monky-with-refresh
+    (e2wm:$pst-class-super)))
 
 (defun e2wm:dp-monky-switch (buf)
   (e2wm:message "#DP MONKY switch : %s" buf)
@@ -432,6 +439,7 @@
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'svn
+   :extend 'base
    :title  "Svn"
    :init   'e2wm:dp-svn-init
    :main   'main
