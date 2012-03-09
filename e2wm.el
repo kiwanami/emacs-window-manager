@@ -523,11 +523,19 @@ from the given string."
 
 (defun e2wm:pst-class-register (pst-class)
   ;;パースペクティブクラスの登録
-  (when (e2wm:aand (e2wm:$pst-class-extend pst-class)
-                  (symbolp it))
-    ;;継承元がシンボルだったらオブジェクトに入れ替える
-    (setf (e2wm:$pst-class-extend pst-class)
-          (e2wm:pst-class-get (e2wm:$pst-class-extend pst-class))))
+  ;;継承元がシンボルだったらオブジェクトに入れ替える
+  (setf (e2wm:$pst-class-extend pst-class)
+        (unless (e2wm:pst-class-abstract-p pst-class)
+          (e2wm:aif (e2wm:$pst-class-extend pst-class)
+              (if (symbolp it)
+                  (e2wm:pst-class-get it)
+                it)
+            (warn (concat "In the definition of `%s' "
+                          ":extend slot must be non-nil for "
+                          "a non-abstract perspective class. "
+                          "It is set to 'base.")
+                  (e2wm:$pst-class-name pst-class))
+            (e2wm:pst-class-get 'base))))
   (e2wm:pst-class-remove pst-class)
   (push pst-class e2wm:pst-list))
 
