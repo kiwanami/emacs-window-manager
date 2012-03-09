@@ -3012,6 +3012,7 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register
  (make-e2wm:$pst-class
      :name   'dashboard
+     :extend 'base
      :title  "Dashboard"
      :main   'w-1-1
      :init   'e2wm:dp-dashboard-init
@@ -3233,6 +3234,7 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register 
  (make-e2wm:$pst-class
      :name   'array
+     :extend 'base
      :title  "Buffer Array"
      :main   'w-1-1
      :init   'e2wm:dp-array-init
