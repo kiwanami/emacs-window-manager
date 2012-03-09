@@ -2915,6 +2915,7 @@ string object to insert the imenu buffer."
 
 (defun e2wm:dp-doc-update (wm)
   (e2wm:message "#DP DOC update")
+  (e2wm:$pst-class-super)
   ;;左右を同じにする
   (let ((leftbuf  (wlf:get-buffer wm 'left))
         (rightbuf (wlf:get-buffer wm 'right)))
