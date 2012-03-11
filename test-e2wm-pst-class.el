@@ -21,3 +21,20 @@
          (result (e2wm:method-call
                   #'e2wm:$pst-class-init class nil)))
     (should (equal result expected-result))))
+
+
+(ert-deftest e2wm-pst-class-grandchild ()
+  (let* ((expected-result 1)
+         (grand-class
+          (make-e2wm:$pst-class :init (lambda () expected-result)))
+         (super-class
+          (make-e2wm:$pst-class
+           :extend grand-class
+           :init (lambda () (e2wm:$pst-class-super))))
+         (class
+          (make-e2wm:$pst-class
+           :extend super-class
+           :init (lambda () (e2wm:$pst-class-super))))
+         (result (e2wm:method-call
+                  #'e2wm:$pst-class-init class nil)))
+    (should (equal result expected-result))))
