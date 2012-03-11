@@ -549,16 +549,19 @@ The current implementation check the buffer name. TODO: improve the internal sig
   keymap save)
 
 (defun e2wm:pst-class-register (pst-class)
-  ;;パースペクティブクラスの登録
+  "Register a perspective class. If the class which name is
+ the same as PST-CLASS has been already registered, the given class
+overrides the previous one."
   (when (e2wm:aand (e2wm:$pst-class-extend pst-class)
                   (symbolp it))
-    ;;継承元がシンボルだったらオブジェクトに入れ替える
+    ;; A symbol for the super class is replaced by the class object.
     (setf (e2wm:$pst-class-extend pst-class)
           (e2wm:pst-class-get (e2wm:$pst-class-extend pst-class))))
   (e2wm:pst-class-remove pst-class)
   (push pst-class e2wm:pst-list))
 
 (defun e2wm:pst-class-remove (pst-class)
+  "Remove the class from the perspective class registry."
   (setq e2wm:pst-list
         (loop with name = (e2wm:$pst-class-name pst-class)
               for i in e2wm:pst-list
@@ -566,7 +569,7 @@ The current implementation check the buffer name. TODO: improve the internal sig
               collect i)))
 
 (defun e2wm:pst-class-get (name)
-  ;;パースペクティブクラスの取得
+  "Return the class object which name is NAME."
   (e2wm:find name 'e2wm:$pst-class-name e2wm:pst-list))
 
 (defun e2wm:pst-class-abstract-p (pst-class)
@@ -621,7 +624,7 @@ raise the error signal with ERROR-ON-NIL."
         (apply method args))))))
 
 (defmacro e2wm:pst-method-call (method-name pst-instance &rest args)
-  ;;pst用のショートカット
+  "[internal] Short cut macro. (pst-instance -> pst-class)"
   `(e2wm:method-call 
     ',method-name 
     (e2wm:$pst-type ,pst-instance) nil ,@args))
@@ -660,6 +663,7 @@ raise the error signal with ERROR-ON-NIL."
   (e2wm:frame-param-set 'e2wm:prev-pst pst-name))
 
 (defun e2wm:pst-copy-instance ()
+  "[internal] Copy the current perspective instance."
   (let ((i (e2wm:pst-get-instance)))
     (make-e2wm:$pst
      :name   (e2wm:$pst-name   i)
@@ -667,10 +671,13 @@ raise the error signal with ERROR-ON-NIL."
      :type   (e2wm:$pst-type   i))))
 
 (defun e2wm:pst-get-wm ()
+  "Return the window layout object of the current perspective."
   (e2wm:$pst-wm (e2wm:pst-get-instance)))
 
 (defun e2wm:pst-update-windows (&optional rebuild-windows)
-  ;;全ウインドウを更新する。rebuild-windowがnon-nilであればウインドウの再構築を行う。
+  "Update all buffers of the windows and plug-ins.  If
+REBUILD-WINDOWS is non-nil, windows are destroyed and new windows
+are created."
   (e2wm:message "#PST-UPDATE")
   (e2wm:with-advice
    (let* ((instance (e2wm:pst-get-instance))
@@ -684,25 +691,24 @@ raise the error signal with ERROR-ON-NIL."
        (wlf:refresh wm)
        (e2wm:aif (e2wm:$pst-main instance)
            (wlf:select wm it)))
-     ;;パースペクティブ固有の処理
-     ;;プラグイン更新は `e2wm:dp-base-update' で行われる
+     ;; Update task for the current perspective
+     ;; (Plug-ins are updated by `e2wm:dp-base-update')
      (e2wm:pst-method-call e2wm:$pst-class-update instance wm)
      )) t)
 
 (defun e2wm:pst-switch-to-buffer (buf)
+  "[internal] Delegate the `switch' function of the current perspective."
   (e2wm:message "#PST-SWITCH %s" buf)
-  ;;switch-to-bufferを乗っ取ってパースペクティブ側に委譲する
   (e2wm:pst-method-call e2wm:$pst-class-switch (e2wm:pst-get-instance) buf))
 
 (defun e2wm:pst-pop-to-buffer (buf)
+  "[internal] Delegate the `popup' function of the current perspective."
   (e2wm:message "#PST-POPUP %s" buf)
-  ;;pop-to-bufferを乗っ取ってパースペクティブ側に委譲する
   (e2wm:pst-method-call e2wm:$pst-class-popup (e2wm:pst-get-instance) buf))
 
 (defun e2wm:pst-change (next-pst-name)
+  "Leave the current perspective and start the new perspective."
   (e2wm:message "#PST-CHANGE %s" next-pst-name)
-  ;;パースペクティブを変更する
-  ;;前のパースペクティブの終了処理と、新しい方の開始処理など
   (let ((prev-pst-instance (e2wm:pst-get-instance))
         (next-pst-class (e2wm:pst-class-get next-pst-name))
         (prev-selected-buffer (current-buffer)))
@@ -732,14 +738,12 @@ raise the error signal with ERROR-ON-NIL."
     (e2wm:pst-update-windows t)))
 
 (defun e2wm:pst-change-prev ()
-  ;;前のパースペクティブに変える
+  "[internal] Change to the previous perspective."
   (e2wm:aif (e2wm:pst-get-prev-pst)
       (progn
         (e2wm:message "#PREV-PST : %s" it)
         (e2wm:pst-change it))))
 
-;;全パースペクティブに共通なキーマップ定義
-;;各パースペクティブで指定したkeymapがこのkeymapのparentに置き換わる (e2wm:pst-change)
 (defvar e2wm:pst-minor-mode-keymap
       (e2wm:define-keymap
        '(("prefix Q"   . e2wm:stop-management)
@@ -747,9 +751,11 @@ raise the error signal with ERROR-ON-NIL."
          ("prefix n"   . e2wm:pst-history-down-command)
          ("prefix p"   . e2wm:pst-history-up-command)
          ("prefix <DEL>" . e2wm:pst-change-prev-pst-command)
-         ) e2wm:prefix-key))
+         ) e2wm:prefix-key)
+      "Common key map for all perspectives. (See `e2wm:pst-change-keymap')")
 
 (defun e2wm:pst-change-keymap (new-keymap)
+  "[internal] Add the perspective key map to the common key map."
   (let ((map (copy-keymap
               (or new-keymap e2wm:pst-minor-mode-keymap))))
     (when new-keymap
@@ -758,17 +764,19 @@ raise the error signal with ERROR-ON-NIL."
         (setf (cdr it) map))))
 
 (defun e2wm:pst-resume (pst-instance)
+  "[internal] Resume the perspective which is suspended by the function `e2wm:pst-finish'."
   (e2wm:message "#PST-RESUME %s" pst-instance)
-  ;;パースペクティブのインスタンスを戻してstartを呼ぶ
-  ;;set-window-configurationでウインドウは元に戻っている仮定
+  ;; This function assumes that the window configuration is 
+  ;; restored by `set-window-configuration'.
   (e2wm:pst-set-instance pst-instance)
   (e2wm:pst-change-keymap (e2wm:$pst-keymap pst-instance))
   (e2wm:pst-method-call e2wm:$pst-class-start pst-instance (e2wm:$pst-wm pst-instance)))
 
 (defun e2wm:pst-finish ()
+  "[internal] Suspend the current perspective for finishing e2wm or
+switching the window configuration to the non-e2wm frame during
+the other application calling `set-window-configuration'."
   (e2wm:message "#PST-FINISH")
-  ;;パースペクティブの終了処理のみ。全体の終了処理や
-  ;;set-window-configurationで非管理対象画面に切り替えたときなど。
   (let ((prev-pst-instance (e2wm:pst-get-instance)))
     (when prev-pst-instance
       (e2wm:pst-method-call e2wm:$pst-class-leave prev-pst-instance 
@@ -776,28 +784,30 @@ raise the error signal with ERROR-ON-NIL."
     (e2wm:pst-set-instance nil)))
 
 (defun e2wm:pst-window-option-get (wm window-name)
-  ;;指定したウインドウのオプション用plistを取ってくる
+  "Return a plist of the plug-in option at the WINDOW-NAME window."
   (wlf:window-options 
    (wlf:get-winfo window-name (wlf:wset-winfo-list wm))))
 
 (defun e2wm:pst-window-plugin-get (wm window-name)
-  ;;指定したウインドウのプラグイン名を取ってくる
+  "Return a symbol of the plug-in at the WINDOW-NAME window. "
   (plist-get (e2wm:pst-window-option-get wm window-name)
              ':plugin))
 
 (defun e2wm:pst-window-plugin-set (wm window-name plugin-name)
-  ;;指定したウインドウにプラグインを設定する
+  "Set the plug-in at the WINDOW-NAME window."
   (plist-put (e2wm:pst-window-option-get wm window-name)
              ':plugin plugin-name))
 
 (defun e2wm:pst-buffer-get (window-name)
-  ;;指定したウインドウのバッファを取ってくる
+  "Return the buffer object at the WINDOW-NAME window."
   (let ((wm (e2wm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
       (wlf:get-buffer wm window-name))))
 
 (defun e2wm:pst-buffer-set (window-name buffer &optional showp selectp)
-  ;;指定したウインドウにバッファをセットする
+  "Set the given BUFFER at the WINDOW-NAME window.
+If SHOWP is non-nil, the hided window is displayed.
+If SELECTP is non-nil, the window is selected."
   (let ((wm (e2wm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
       (when (and showp (not (wlf:get-window wm window-name)))
@@ -809,14 +819,14 @@ raise the error signal with ERROR-ON-NIL."
          (with-current-buffer buffer (point)))))))
 
 (defun e2wm:pst-window-select (window-name)
-  ;;指定したウインドウを選択する
+  "Select the WINDOW-NAME window."
   (let ((wm (e2wm:pst-get-wm)))
     (when (wlf:window-name-p wm window-name)
       (wlf:select wm window-name))))
 
 (defun e2wm:pst-window-select-main ()
-  ;;パースペクティブのデフォルトウインドウを選択する
-  ;;main スロットが nil なら何もしない
+  "Select the `main' window which is defined by the perspective.
+If the perspective has no `main' window, this function does nothing."
   (let ((main (e2wm:$pst-main (e2wm:pst-get-instance)))
         (wm (e2wm:pst-get-wm)))
     (when (and main (wlf:window-name-p wm main))
@@ -836,9 +846,8 @@ selected window, or nil if none is selected."
         (when next-window (wlf:select wm next-window) next-window)))))
 
 (defun e2wm:pst-show-history-main ()
-  ;;パースペクティブの「メイン」ウインドウ（もしあれば）に履歴のトップ
-  ;;のバッファを表示して e2wm:pst-update-windows する。
-  ;;履歴移動系のコマンドやバッファ切り替え乗っ取り系から呼ばれる。
+  "Display the history top buffer at the `main' window which is
+defined by the perspective."
   (e2wm:with-advice
    (let* ((instance (e2wm:pst-get-instance))
           (wm (e2wm:$pst-wm instance)))
@@ -847,8 +856,9 @@ selected window, or nil if none is selected."
      (e2wm:pst-update-windows))))
 
 (defun e2wm:pst-after-save-hook ()
+  "[internal] Hook for `after-save-hook'."
   (e2wm:message "$$ AFTER SAVE HOOK %S" this-command)
-  ;; 自動保存などで save-hook が呼ばれた場合は無視する
+  ;; Ignore save events those are triggered by timers.
   (when this-command
     (e2wm:pst-method-call e2wm:$pst-class-save (e2wm:pst-get-instance))
     (e2wm:pst-update-windows)))
