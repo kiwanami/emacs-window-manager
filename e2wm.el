@@ -3294,7 +3294,7 @@ string object to insert the imenu buffer."
 (defun e2wm:dp-array-start (wm)
   (e2wm:message "#ARRAY START")
   (setq e2wm:dp-array-backup-globalmap global-map)
-  (use-global-map (make-keymap)) ; 強引
+  (use-global-map e2wm:dp-array-minor-mode-map) ; 強引
   (setq overriding-terminal-local-map e2wm:dp-array-minor-mode-map)
   (e2wm:dp-array-decrease-fontsize)
   (e2wm:dp-array-update-summary))
