@@ -576,34 +576,43 @@ slots (i.e., `:init' and `:title')."
        (not (e2wm:$pst-class-init pst-class))
        (not (e2wm:$pst-class-title pst-class))))
 
-;;e2wm:$pst(perspective) インスタンス構造体
-;; name    : このパースペクティブの名前、シンボル
-;; wm      : wlfレイアウトオブジェクト
-;; type    : class オブジェクトへの参照
+
+;; structure [e2wm:$pst] 
+;;
+;;   This structure represents an instance of the perspective.
+;;
+;; name    : A symbol for this perspective
+;; wm      : wlf layout object
+;; type    : A reference to the perspective class object
 
 (defstruct e2wm:$pst name wm type)
 
-(defmacro e2wm:$pst-get-prop (name pst)
-  ;;現在のクラスが値を持ってなかったら、継承元クラスの値を返す
-  (let ((method-name (intern (format "e2wm:$pst-class-%s" name))))
-    `(or (,method-name (e2wm:$pst-type ,pst))
-         (and (e2wm:$pst-super ,pst) 
-              (,method-name (e2wm:$pst-super ,pst))))))
+(defun e2wm:$pst-get-prop (name pst)
+  "[internal] Return the value of this perspective."
+  (let ((slot-name (intern (format "e2wm:$pst-class-%s" name))))
+    (e2wm:$pst-class-get-prop-gen slot-name (e2wm:$pst-type pst))))
 
-(defun e2wm:method-call (method-name class super-class on-nil &rest args)
-  ;;Java的OOPな継承によるオーバーライドを実現
-  ;;とりあえず継承は１段階のみ
-  (lexical-let ((method (funcall method-name class))
-                (super-method (and super-class
-                                   (funcall method-name super-class)))
+(defun e2wm:$pst-class-get-prop-gen (slot-name pst-class)
+  "[internal] Return the slot value of this perspective class."
+  (or (funcall slot-name pst-class)
+      (e2wm:aif (e2wm:$pst-class-extend pst-class)
+          (e2wm:$pst-class-get-prop-gen slot-name it))))
+
+(defun e2wm:method-call (method-name class error-on-nil &rest args)
+  "[internal] Call the method which belongs to the perspective class.
+If ERROR-ON-NIL is non-nil and the CLASS has no value at the slot, 
+raise the error signal with ERROR-ON-NIL."
+  (lexical-let ((method (e2wm:$pst-class-get-prop-gen method-name class))
+                (super-method 
+                 (e2wm:aand 
+                  (e2wm:$pst-class-extend class)
+                  (e2wm:$pst-class-get-prop-gen method-name it)))
                 (args args))
     (cond
-     ((and (null method) (null super-method))
-      (if on-nil (error on-nil) nil))
+     ((null method)
+      (if error-on-nil (error error-on-nil) nil))
      ((and method (null super-method))
       (apply method args))
-     ((and (null method) super-method)
-      (apply super-method args))
      (t
       (flet ((e2wm:$pst-class-super () (apply super-method args)))
         (apply method args))))))
@@ -612,15 +621,14 @@ slots (i.e., `:init' and `:title')."
   ;;pst用のショートカット
   `(e2wm:method-call 
     ',method-name 
-    (e2wm:$pst-type ,pst-instance)
-    (e2wm:$pst-super ,pst-instance) nil ,@args))
+    (e2wm:$pst-type ,pst-instance) nil ,@args))
 
 (defun e2wm:$pst-title (pst)
-  (e2wm:$pst-get-prop title pst))
+  (e2wm:$pst-get-prop 'title pst))
 (defun e2wm:$pst-main (pst)
-  (e2wm:$pst-get-prop main pst))
+  (e2wm:$pst-get-prop 'main pst))
 (defun e2wm:$pst-keymap (pst)
-  (e2wm:aif (e2wm:$pst-get-prop keymap pst)
+  (e2wm:aif (e2wm:$pst-get-prop 'keymap pst)
       (symbol-value it) nil))
 
 (defun e2wm:$pst-start (pst)
@@ -698,7 +706,7 @@ slots (i.e., `:init' and `:title')."
     (when (e2wm:internal-buffer-p prev-selected-buffer)
       (setq prev-selected-buffer nil))
     (cond
-     ((null next-pst-name)
+     ((null next-pst-class)
       (error "Perspective [%s] is not found." next-pst-name))
      (t
       (e2wm:aif prev-pst-instance
@@ -706,12 +714,9 @@ slots (i.e., `:init' and `:title')."
             (e2wm:pst-method-call e2wm:$pst-class-leave it (e2wm:$pst-wm it))
             (unless (eql next-pst-name (e2wm:$pst-name it))
               (e2wm:pst-set-prev-pst (e2wm:$pst-name it)))))
-      (let* ((next-pst-super-class
-              (e2wm:$pst-class-extend next-pst-class))
-             (next-pst-wm
+      (let* ((next-pst-wm
               (e2wm:method-call 'e2wm:$pst-class-init 
-                               next-pst-class 
-                               next-pst-super-class 
+                               next-pst-class
                                (format "[%s] init method is nil!" next-pst-name)))
              (next-pst-instance 
               (make-e2wm:$pst :name next-pst-name
@@ -2846,7 +2851,7 @@ string object to insert the imenu buffer."
 ;;; htwo / Horizontal split editing perspective
 ;;;--------------------------------------------------
 
-(setq e2wm:c-htwo-recipe
+(defvar e2wm:c-htwo-recipe
       '(| (:left-size-ratio 0.55)
           (| (:left-max-size 30)
              (- (:upper-size-ratio 0.7)
@@ -2887,6 +2892,11 @@ string object to insert the imenu buffer."
       (wlf:set-buffer htwo-wm 'right (e2wm:history-get-prev buf))))
 
     htwo-wm))
+
+(defun e2wm:dp-htwo ()
+  (interactive)
+  (e2wm:pst-change 'htwo))
+
 
 ;;; document / Document view perspective
 ;;;--------------------------------------------------
