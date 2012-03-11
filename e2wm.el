@@ -603,18 +603,21 @@ slots (i.e., `:init' and `:title')."
 If ERROR-ON-NIL is non-nil and the CLASS has no value at the slot, 
 raise the error signal with ERROR-ON-NIL."
   (lexical-let ((method (e2wm:$pst-class-get-prop-gen method-name class))
-                (super-method 
-                 (e2wm:aand 
-                  (e2wm:$pst-class-extend class)
-                  (e2wm:$pst-class-get-prop-gen method-name it)))
+                (super-class (e2wm:$pst-class-extend class))
+                ;; put all arguments in lexical scope to use it in
+                ;; `e2wm:$pst-class-super':
+                (method-name method-name)
+                (class class)
+                (error-on-nil error-on-nil)
                 (args args))
     (cond
      ((null method)
       (if error-on-nil (error error-on-nil) nil))
-     ((and method (null super-method))
-      (apply method args))
      (t
-      (flet ((e2wm:$pst-class-super () (apply super-method args)))
+      (flet ((e2wm:$pst-class-super () (apply
+                                        #'e2wm:method-call
+                                        method-name super-class
+                                        error-on-nil args)))
         (apply method args))))))
 
 (defmacro e2wm:pst-method-call (method-name pst-instance &rest args)
