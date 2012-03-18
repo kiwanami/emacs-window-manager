@@ -3545,9 +3545,16 @@ string object to insert the imenu buffer."
 (defvar e2wm:pre-start-hook nil "")
 (defvar e2wm:post-start-hook nil "")
 
-(defun e2wm:start-management (&optional pstset)
-  ;;現在のフレームの管理を開始
+(defun e2wm:start-management (&optional pstset force-restart)
+  "e2wm window management for the current frame.
+
+To force restart use the universal prefix argument (C-u) or
+specify non-nil for FORCE-STOP when calling as a lisp function."
   (interactive)
+
+  (when (or force-restart current-prefix-arg)
+    (e2wm:stop-management t)
+    (message "Restarting e2wm..."))
 
   (cond
    (e2wm:pst-minor-mode
@@ -3572,14 +3579,19 @@ string object to insert the imenu buffer."
     (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))) ; 先頭をメインとする
     (e2wm:menu-define)
 
-    (run-hooks 'e2wm:post-start-hook))))
+    (run-hooks 'e2wm:post-start-hook)
+    (message "E2wm is started."))))
 
 (defvar e2wm:post-stop-hook nil "")
 
-(defun e2wm:stop-management ()
-  ;;現在のフレームの管理を終了
+(defun e2wm:stop-management (&optional force-stop)
+  "Stop e2wm window management for the current frame.
+
+To force stop, use the universal prefix argument (C-u) or
+specify non-nil for FORCE-STOP when calling as a lisp function."
   (interactive)
-  (when (e2wm:managed-p)
+  (setq force-stop (or current-prefix-arg force-stop))
+  (when (or force-stop (e2wm:managed-p))
     (e2wm:pst-finish)
     (e2wm:pst-minor-mode -1)
     (e2wm:pst-set-prev-pst nil)
@@ -3589,7 +3601,9 @@ string object to insert the imenu buffer."
     (e2wm:aif (e2wm:frame-param-get 
                'e2wm-save-window-configuration)
         (set-window-configuration it))
-    (run-hooks 'e2wm:post-stop-hook)))
+    (run-hooks 'e2wm:post-stop-hook))
+  (when force-stop
+    (message "E2wm is stopped forcefully.")))
 
 ;; for dev
 ;; (progn (setq e2wm:debug t) (toggle-debug-on-error))
