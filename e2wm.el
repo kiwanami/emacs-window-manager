@@ -3526,16 +3526,17 @@ string object to insert the imenu buffer."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Setup
 
-(e2wm:add-keymap 
+(e2wm:add-keymap
  e2wm:pst-minor-mode-keymap
  '(("prefix 1" . e2wm:dp-code)
-   ("prefix 2" . e2wm:dp-two) 
+   ("prefix 2" . e2wm:dp-two)
    ("prefix 3" . e2wm:dp-doc)
    ("prefix 4" . e2wm:dp-array)
    ("prefix 5" . e2wm:dp-dashboard))
  e2wm:prefix-key)
 
 (defun e2wm:history-add-loaded-buffers ()
+  "Put all recordable buffers in the history list."
   (interactive)
   (loop for b in (buffer-list)
         for bo = (get-buffer b)
@@ -3562,11 +3563,11 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
    (t
     (run-hooks 'e2wm:pre-start-hook)
 
-    (e2wm:frame-param-set 
-     'e2wm-save-window-configuration 
+    (e2wm:frame-param-set
+     'e2wm-save-window-configuration
      (current-window-configuration))
 
-    (e2wm:history-add-loaded-buffers) ; 全部つっこむ
+    (e2wm:history-add-loaded-buffers)
     (e2wm:history-save-backup nil)
 
     (e2wm:pst-minor-mode 1)
@@ -3574,9 +3575,10 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
 
     (if pstset
         (e2wm:pstset-define pstset)
-      (e2wm:pstset-defaults)) ; 全部使う
+      (e2wm:pstset-defaults)) ; use all registered perspectives
     (e2wm:pst-set-prev-pst nil)
-    (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))) ; 先頭をメインとする
+    ;; show the first perspective in the perspective set
+    (e2wm:pst-change (car (e2wm:pstset-get-current-pstset)))
     (e2wm:menu-define)
 
     (run-hooks 'e2wm:post-start-hook)
@@ -3598,7 +3600,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
 
     (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
 
-    (e2wm:aif (e2wm:frame-param-get 
+    (e2wm:aif (e2wm:frame-param-get
                'e2wm-save-window-configuration)
         (set-window-configuration it))
     (run-hooks 'e2wm:post-stop-hook))
