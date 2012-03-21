@@ -1177,14 +1177,26 @@ defined by the perspective."
       )))
 
 (defun e2wm:kill-buffer-hook ()
+  "[internal] Update windows which showed the killed buffer.
+Called via `kill-buffer-hook'."
   (e2wm:message "#KILL HOOK")
   (when (and (e2wm:history-recordable-p (current-buffer))
              (e2wm:managed-p))
-    ;; killされたら履歴からも消す
-    (e2wm:history-delete (current-buffer))
+    ;; If kill is *not* called by command, don't change windows
     (when this-command
-      ;; 自動実行だったら画面を更新しない
-      (e2wm:pst-show-history-main))))
+      ;; search through the existing windows which show the killed buffer
+      (loop with wm = (e2wm:pst-get-wm)
+            with killedbuf = (current-buffer)
+            with nextbuf = (current-buffer)
+            for winfo in (wlf:wset-winfo-list wm)
+            for wname = (wlf:window-name winfo)
+            when (equal (wlf:get-buffer wm wname) killedbuf)
+            do (progn
+                 (setq nextbuf (e2wm:history-get-next nextbuf))
+                 (wlf:set-buffer wm wname nextbuf)))
+      (e2wm:pst-update-windows))
+    ;; remove it from the history list
+    (e2wm:history-delete (current-buffer))))
 
 ;; delete-other-windows対策
 
