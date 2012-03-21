@@ -1193,10 +1193,11 @@ Called via `kill-buffer-hook'."
             when (equal (wlf:get-buffer wm wname) killedbuf)
             do (progn
                  (setq nextbuf (e2wm:history-get-next nextbuf))
-                 (wlf:set-buffer wm wname nextbuf)))
-      (e2wm:pst-update-windows))
+                 (wlf:set-buffer wm wname nextbuf))))
     ;; remove it from the history list
-    (e2wm:history-delete (current-buffer))))
+    (e2wm:history-delete (current-buffer))
+    (when this-command
+      (e2wm:pst-update-windows))))
 
 ;; delete-other-windows対策
 
