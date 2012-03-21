@@ -1,222 +1,122 @@
-# E2WM : Equilibrium Emacs Window Managaer
+# E2WM : Equilibrium Emacs Window Manager
 
-## 概要
+E2WM is a window manager for Emacs.  It enables to customize the
+place of pop-up window, how the windows are split, how the buffers
+are located in the windows, keybinds to manipulate windows and
+buffers, etc.  It also has plug-ins to help your Emacs life.
 
-Emacsのウインドウマネージャーです。ポップアップウインドウの出現場所や、
-ウインドウの分割などをあらかじめ設定しておいた方法で表示されるように管
-理します。
+## Buffer history
 
-ウインドウの管理だけでなく、作業上便利な付加機能が付いています。
+Buffers that you edit is recorded in a special history.  It will
+help you to go back and forth to edit these buffers.
 
-### バッファ履歴管理
+## Perspective
 
-編集対象のバッファについては履歴を管理していますので、行ったり来たりする
-編集が多少楽になると思います。
+Depending on the kind of your task, you can change how the windows are
+split.  Following the term from Eclipse, it is called perspective.
+E2WM has the following perspectives by default.
 
-### パースペクティブ
+### Code perspective
 
-作業シーンによって分割表示方法を切り替えることができます。この分割表示方法
-をEclipseにならってパースペクティブと呼んでいます。デフォルトでは、以下の
-ものを用意しています。
+![code perspective](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231754.png)
 
-- code:  中央に１つのコードを表示してがっつり読み書きする
-- two:   左右２分割してコードの比較や参照をする
-- htwo   上下２分割してコードの比較や参照をする
-- doc:   長いコードやドキュメントをfollow-modeで読む
-- dashboard: たまに見たい、使いたいバッファを集めて置いておく
-- array: 開いているバッファを全部表示して全体を眺めたり、視覚的に探したりする
+Place a buffer for reading/writing code at center and helper plug-ins
+around of it.
 
-パースペクティブはユーザー側で自由に増やしたり拡張したりできます。自分
-の好みにカスタマイズすると、自分でウインドウを分割するような作業がほと
-んど必要無くなります。
+### Two / HTwo perspective
 
-### プラグインによる拡張
+![two perspective](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231758.png)
 
-Eclipseの「ビュー」のような、機能を持ったウインドウを増やすことができます。
-ここではプラグインと呼んでいます。デフォルトでは以下のようなプラグイン
-を用意しています。
+Show two buffers by splitting left and right (two) or top and bottom (htwo).
 
-- 編集中バッファのディレクトリ内のファイル一覧を表示
-- バッファ履歴一覧を表示
-- Imenuでアウトラインの表示・移動、現在地の表示
-- topコマンドの出力を表示、一定時間おきに更新
-- 時計の表示
+### Doc perspective
 
-プラグインも自由に増やしたり設定することができます。
+![doc perspective](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231753.png)
+
+Read long code or document in the follow-mode.
+
+### Dashboard perspective
+
+![dashboard](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231752.png)
+
+Put the buffers you want see occasionally.
+
+### Array perspective
+
+![array](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231751.png)
+
+Show all the buffers you have and help searching for the buffer you
+are looking for visually.
+
+### Emacs DBI
+
+![Emacs DBI](https://cacoo.com/diagrams/VdRPw8hjXiezJJud-23532.png?width=450)
+
+Emacs DBI (Database Interface for Emacs Lisp) has it's own perspective
+to manipulate database.
+
+See also [emacs-edbi](https://github.com/kiwanami/emacs-edbi).
 
 
-## インストール
+### Customize
 
-必要なもの、環境
+Perspective is highly customizable.  You don't need to split windows
+by yourself anymore; let E2WM do the job!
 
-ロードパスに e2wm.el, window-layout.el を置き、以下のように呼び出し用の
-コードを .emacsなどに追加してください。以下の例では、Altキーを押しなが
-ら「+」を押すとウインドウの管理を開始します。終了する場合は「C-c ; C-q」
-です。
 
-    ;; 最小の e2wm 設定例
+## Plug-ins
+
+E2WM can have windows which have a specific function, something like
+Eclipse's "view".  It is called plug-in.  E2WM has the following
+plug-ins by default.  (Yes, you can create your own plug-ins also.)
+
+### history-list
+
+![history-list plug-in](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231755.png)
+
+![history-list2 plug-in](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100607/20100607234419.png)
+
+Show buffer history.
+
+
+### files (dired)
+
+![files plug-in](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231759.png)
+
+A list of files in the current directory.
+
+
+### imenu
+
+![imenu plug-in](http://cdn-ak.f.st-hatena.com/images/fotolife/k/kiwanami/20100527/20100527231747.png)
+
+Show the outline of the current code and the current position on it
+using Imenu.
+
+
+## Install
+
+Put e2wm.el and
+[window-layout.el](https://github.com/kiwanami/emacs-window-layout) in
+your load-path.  This is a very simple setting example:
+
     (require 'e2wm)
     (global-set-key (kbd "M-+") 'e2wm:start-management)
 
-※注意点
+Have a look at e2wm-config.el to see how to customize E2WM.
 
-Window周りの関数をほとんど乗っ取っていますので、お使いの環境と相性が悪
-いことがあるかもしれません。本気のバッファで使う前に、作業に支障が出な
-いかどうかご確認をお願いします。
-
-## 使い方
-
-TODO...
-
-### キーバインド
-
-#### パースペクティブ共通
-
-#### codeパースペクティブ
-
-#### twoパースペクティブ
-
-#### htwoパースペクティブ
-
-#### docパースペクティブ
-
-#### dashboardパースペクティブ
-
-#### arrayパースペクティブ
+**Warning**: E2WM overrides Emacs lisp functions which is related to
+window manipulation.  It is possible that E2WM does not work in your
+environment.  It is recommended to test if E2WM works find before
+use it to serious files.
 
 
-### 簡易的なカスタマイズなど
+## Usage
 
 TODO...
 
-なお、設定のひな形を e2wm-config.el としておいていますので、参考にしてみ
-てください。
 
-
-### ウインドウ分割の詳細
-
-### パースペクティブの作成
-
-### プラグインの作成
-
-### 略語、表記など
-
-- `pst`                  : perspective
-- `e2wm:c-`              : カスタマイズ変数
-- `e2wm:$`               : 構造体定義
-
-- `e2wm:history-`        : 履歴管理
-- `e2wm:pst-`            : パースペクティブフレームワーク
-- `e2wm:pstset-`         : パースペクティブセット
-- `e2wm:ad-`             : アドバイス（switch-to-buffer, pop-to-bufferなど）
-- `e2wm:plugin-`         : プラグインフレームワーク
-- `e2wm:menu-`           : メニュー
-- `e2wm:def-plugin-`     : プラグイン定義
-- `e2wm:dp-`             : パースペクティブ定義
-  + `e2wm:dp-code-`      :   code
-  + `e2wm:dp-doc-`       :   doc
-  + `e2wm:dp-two-`       :   two
-  + `e2wm:dp-dashboard-` :   dashboard
-  + `e2wm:dp-array-`     :   array
-
-
-### 構造体
-
-#### e2wm:$pst-class 構造体
-
-この構造体でパースペクティブの定義を行う。
-
-- **name** (_symbol_, 必須):
-  このパースペクティブの名前。
-
-- **extend** (_symbol_):
-  このパースペクティブの継承元名。
-  以下のものでこのクラスの定義が `nil` だったら継承元を呼ぶ。
-
-- **init** (_function()_, 必須):
-  このパースペクティブのコンストラクタ。
-  返値として `wset` 構造体を返す。
-  基本的に wset 構造体だけを返すようにして、レイアウトや
-  必要なフックなどのセットアップが必要であれば下のstartで行う。
-  init で使える dynamic bind 変数 : `prev-selected-buffer`。
-
-- **title** (_string_, 必須):
-  このパースペクティブのタイトル（人が読む用）。
-
-- **main** (_symbol_):
-  wlfのウインドウレイアウトのうち、デフォルトでフォーカスを当てるべき場所の名前。
-  nilなら適当に選ぶ。
-
-- **start** (_function(wm)_):
-  レイアウトや必要なフックなどのセットアップを行う。引数：wm。
-  この関数がnilなら何もしない。
-  （leaveで一時中断して後で再度startが呼ばれることがある。）
-  start で使える dynamic bind 変数 : `prev-selected-buffer`。
-
-- **update** (_function(wm)_):
-  wlfの各windowを更新する際に呼ばれる関数。引数：wm。
-  この関数がnilなら何もしない。
-  各Windowのプラグインの更新が行われる前に呼ばれる。
-  ウインドウの構成の変更や履歴を戻ったりするたびに呼ばれる。
-
-- **switch** (_function(buffer)_):
-  `switch-to-buffer` を乗っ取る関数。引数：buffer。
-  この関数がnilなら何もしない。返値でnilを返すと本来の動作、
-  それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
-  プラグインの更新などが必要であれば `e2wm:pst-update-windows` を呼ぶこと。
-
-- **popup** (_function(buffer)_):
-  `pop-to-buffer`, `special-display-func` を乗っ取る関数。引数：buffer。
-  この関数がnilなら何もしない。返値でnilを返すと本来の動作、
-  それ以外なら動作を乗っ取ったものとみなしてそのまま終了する。
-  プラグインの更新などが必要であれば `e2wm:pst-update-windows` を呼ぶこと。
-
-- **leave** (_function(wm)_):
-  このパースペクティブを終了する際に呼ばれる関数。引数：wm。
-  この関数がnilなら何もしない。
-
-- **keymap** (_keymap_):
-  このパースペクティブで有効にするキーマップのシンボル。nilだと何も設定しない。
-
-- **save** (_function()_):
-  `after-save-hook` で呼ばれる。
-  選択されているパースペクティブだけ作用。nilだと何もしない。
-
-関数を入れるスロットで継承元を呼ぶ場合は `(e2wm:$pst-class-super)`
-（dynamic bind関数）を引数無しで呼ぶ。
-
-
-#### e2wm:$pst(perspective) インスタンス構造体
-
-- **name** :
-  このパースペクティブの名前、シンボル
-- **wm** :
-  wlfレイアウトオブジェクト
-- **type** :
-  class オブジェクトへの参照
-
-
-#### e2wm:$wcfg ウインドウ配置構造体
-
-- **wcfg** :
-  本来の `current-window-configuration` でとれるウインドウ配置オブジェクト
-- **pst** :
-  パースペクティブのインスタンスのコピー
-- **count** :
-  デバッグ用カウンタ
-
-
-#### e2wm:$plugin構造体
-
-- **name** :
-  プラグインの symbol
-- **title** :
-  人が読む用のプラグインの名前
-- **update** :
-  プラグイン本体の関数
-
-
-## ライセンスなど
+## License
 
 License
   GPL v3
