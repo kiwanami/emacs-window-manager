@@ -731,7 +731,8 @@ raise the error signal with ERROR-ON-NIL."
 
 (defun e2wm:pst-get-wm ()
   "Return the window layout object of the current perspective."
-  (e2wm:$pst-wm (e2wm:pst-get-instance)))
+  (e2wm:aif (e2wm:pst-get-instance)
+      (e2wm:$pst-wm it)))
 
 (defun e2wm:pst-update-windows (&optional rebuild-windows)
   "Update all buffers of the windows and plug-ins.  If
