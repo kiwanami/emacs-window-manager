@@ -541,6 +541,29 @@ If no buffer is found, return BUFFER."
                ((eql buffer i) (setq found t))))
         buffer)))
 
+(defun e2wm:history-get-nearest (buffer n)
+  "Return a list of N buffers that is near to the BUFFER but is
+*not* the BUFFER."
+  (let* ((history (append (reverse (e2wm:history-get-backup))
+                          (e2wm:history-get)))
+         (prevs nil)
+         (nexts nil))
+    (loop for i in history
+          for c from 0
+          with found = nil
+          if (and found (< n c))
+          return found
+          else
+          do (if (eql buffer i)
+                 (setq found t)
+               (if found
+                   (push i nexts)
+                 (push i prevs))))
+    (loop for i in (subseq (append prevs (reverse nexts)) 0 n)
+          with last-non-nil = nil
+          if i collect i and do (setq last-non-nil i)
+          else collect last-non-nil)))
+
 (defun e2wm:history-get-main-buffer ()
   "Return the main buffer that should be display as the current
 editing buffer."
@@ -1186,18 +1209,20 @@ Called via `kill-buffer-hook'."
     ;; If kill is *not* called by command, don't change windows
     (when this-command
       ;; search through the existing windows which show the killed buffer
-      (loop with wm = (e2wm:pst-get-wm)
-            with killedbuf = (current-buffer)
-            with nextbuf = (current-buffer)
-            for winfo in (wlf:wset-winfo-list wm)
-            for wname = (wlf:window-name winfo)
-            when (equal (wlf:get-buffer wm wname) killedbuf)
-            do (progn
-                 (setq nextbuf (e2wm:history-get-next nextbuf))
-                 (wlf:set-buffer wm wname nextbuf)))
-      (e2wm:pst-update-windows))
+      (let* ((killedbuf (current-buffer))
+             (wm (e2wm:pst-get-wm))
+             (wins (loop for winfo in (wlf:wset-winfo-list wm)
+                         for wname = (wlf:window-name winfo)
+                         when (equal (wlf:get-buffer wm wname) killedbuf)
+                         collect wname))
+             (buffers (e2wm:history-get-nearest killedbuf (length wins))))
+        (loop for wname in wins
+              for buf in buffers
+              do (wlf:set-buffer wm wname buf))))
     ;; remove it from the history list
-    (e2wm:history-delete (current-buffer))))
+    (e2wm:history-delete (current-buffer))
+    (when this-command
+      (e2wm:pst-update-windows))))
 
 ;; delete-other-windows対策
 
