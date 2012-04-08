@@ -711,6 +711,19 @@ raise the error signal with ERROR-ON-NIL."
     ',method-name 
     (e2wm:$pst-type ,pst-instance) nil ,@args))
 
+(defun e2wm:$pst-class-super ()
+  "Dynamically bound super class method of the current perspective method.
+
+WARNING: Call this function only *inside* of a perspective method
+which class (`e2wm:$pst-class') has the `:extend' slot.
+
+This function is a dummy implementation for suppressing compile
+warning and providing information to user via docstring and error
+message.  Directly calling this function raises error.
+
+See `e2wm:method-call' for implementation."
+  (error "e2wm:$pst-class-super is called outside of perspective method."))
+
 (defun e2wm:$pst-title (pst)
   (e2wm:$pst-get-prop 'title pst))
 (defun e2wm:$pst-main (pst)
