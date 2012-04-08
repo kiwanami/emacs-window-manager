@@ -1003,8 +1003,10 @@ defined by the perspective."
   (if e2wm:pst-minor-mode
       (progn
         (e2wm:pst-minor-mode-setup)
+        (add-hook 'delete-frame-functions 'e2wm:delete-frame-functions)
         (run-hooks 'e2wm:pst-minor-mode-setup-hook))
     (e2wm:pst-minor-mode-abort)
+    (remove-hook 'delete-frame-functions 'e2wm:delete-frame-functions)
     (run-hooks 'e2wm:pst-minor-mode-abort-hook)))
 
 (defun e2wm:pst-minor-mode-setup ()
@@ -1084,6 +1086,13 @@ defined by the perspective."
     (e2wm:pst-minor-mode-switch-frame next-frame)
     (select-frame next-frame))
   ad-do-it)
+
+(defun e2wm:delete-frame-functions (frame)
+  (e2wm:message "## DELETE FRAME HOOK [%s] " frame)
+  (let* ((next-frame (next-frame frame)))
+    (e2wm:message "## NEXT FRAME [%s] -> (%s)" frame next-frame)
+    (e2wm:pst-minor-mode-switch-frame next-frame)
+    (select-frame next-frame)))
 
 (defadvice other-frame (after e2wm:ad-frame-override)
   (e2wm:message "## OTHER FRAME [%s] " (selected-frame))
