@@ -158,6 +158,8 @@
 
 (require 'window-layout)
 
+(eval-when-compile (defvar prev-selected-buffer))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ### Customize
@@ -586,6 +588,11 @@ The current implementation check the buffer name. TODO: improve the internal sig
 (defvar e2wm:pst-list nil "[internal] Perspective class registory.")
 (setq e2wm:pst-list nil)
 
+(defvar e2wm:prev-selected-buffer nil
+  "The dynamically bound variable pointed to the previous buffer.
+This is available in `init', `start' and `leave' function.
+Note that `prev-selected-buffer' is obsolete now.")
+
 ;; structure  [ e2wm:$pst-class ]
 ;;
 ;;   This structure defines a perspective.
@@ -599,7 +606,7 @@ The current implementation check the buffer name. TODO: improve the internal sig
 ;; init    : (*) The constructor function for this perspective. (Arguments: none)
 ;;         : This function just set up the wset structure object and return it.
 ;;         : Actual laying out and setting up hooks should be done in the `start' function.
-;;         : The dynamically bound variable `prev-selected-buffer' can be used at the 
+;;         : The dynamically bound variable `e2wm:prev-selected-buffer' can be used at the 
 ;;         : functions `init' and `start'.
 ;; title   : (*) A string for the title of this perspective.
 ;; main    : A symbol for the window name which is selected initially.
@@ -807,8 +814,10 @@ are created."
   (e2wm:message "#PST-CHANGE %s" next-pst-name)
   (let ((prev-pst-instance (e2wm:pst-get-instance))
         (next-pst-class (e2wm:pst-class-get next-pst-name))
+        (e2wm:prev-selected-buffer (current-buffer))
         (prev-selected-buffer (current-buffer)))
-    (when (e2wm:internal-buffer-p prev-selected-buffer)
+    (when (e2wm:internal-buffer-p e2wm:prev-selected-buffer)
+      (setq e2wm:prev-selected-buffer nil)
       (setq prev-selected-buffer nil))
     (cond
      ((null next-pst-class)
@@ -2694,11 +2703,11 @@ string object to insert the imenu buffer."
         (wlf:no-layout 
          e2wm:c-code-recipe
          e2wm:c-code-winfo))
-       (buf (or prev-selected-buffer
+       (buf (or e2wm:prev-selected-buffer
                 (e2wm:history-get-main-buffer))))
 
-    (when (e2wm:history-recordable-p prev-selected-buffer)
-      (e2wm:history-add prev-selected-buffer))
+    (when (e2wm:history-recordable-p e2wm:prev-selected-buffer)
+      (e2wm:history-add e2wm:prev-selected-buffer))
     
     (wlf:set-buffer code-wm 'main buf)
     code-wm))
@@ -2831,7 +2840,7 @@ string object to insert the imenu buffer."
         (wlf:no-layout 
          e2wm:c-two-recipe
          e2wm:c-two-winfo))
-       (buf (or prev-selected-buffer
+       (buf (or e2wm:prev-selected-buffer
                 (e2wm:history-get-main-buffer))))
 
     (wlf:set-buffer two-wm 'left buf)
@@ -3002,7 +3011,7 @@ string object to insert the imenu buffer."
         (wlf:no-layout 
          e2wm:c-htwo-recipe
          e2wm:c-htwo-winfo))
-       (buf (or prev-selected-buffer
+       (buf (or e2wm:prev-selected-buffer
                 (e2wm:history-get-main-buffer))))
 
     (wlf:set-buffer htwo-wm 'left buf)
@@ -3063,7 +3072,7 @@ string object to insert the imenu buffer."
        (buf (e2wm:dp-doc-get-doc-buffer)))
 
     (unless (and buf (buffer-live-p buf))
-      (setq buf (or prev-selected-buffer
+      (setq buf (or e2wm:prev-selected-buffer
                     (e2wm:history-get-main-buffer))))
     
     (wlf:set-buffer doc-wm 'left buf)
@@ -3126,7 +3135,7 @@ string object to insert the imenu buffer."
     (when (and buf (buffer-live-p buf))
       (unless (e2wm:history-recordable-p buf) ; ドキュメント的バッファだったら
         (e2wm:dp-doc-set-doc-buffer buf)      ; あとで再表示できるようにして、
-        (setq prev-selected-buffer nil))))   ; 次のパースペクティブは履歴から持ってきてもらう
+        (setq e2wm:prev-selected-buffer nil))))   ; 次のパースペクティブは履歴から持ってきてもらう
   (loop for b in (buffer-list)
         do (with-current-buffer b
              (when follow-mode
@@ -3213,7 +3222,8 @@ string object to insert the imenu buffer."
   (e2wm:dp-dashboard-update-summary))
 
 (defun e2wm:dp-dashboard-leave (wm)
-  (unless (e2wm:history-recordable-p prev-selected-buffer)
+  (unless (e2wm:history-recordable-p e2wm:prev-selected-buffer)
+    (setq e2wm:prev-selected-buffer nil)
     (setq prev-selected-buffer nil)))   ; 次のパースペクティブは履歴から持ってきてもらう
 
 (defun e2wm:dp-dashboard-update-summary ()

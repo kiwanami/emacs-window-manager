@@ -168,7 +168,7 @@
 
 (defun e2wm:dp-magit-leave (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-magit$")
-  (setq prev-selected-buffer nil))
+  (setq e2wm:prev-selected-buffer nil))
 
 (defun e2wm:dp-magit-start (wm)
   (ad-activate-regexp "^e2wm:ad-override-magit$"))
@@ -176,7 +176,7 @@
 (defun e2wm:dp-magit-init ()
   (let* ((magit-wm 
           (wlf:no-layout e2wm:c-magit-recipe e2wm:c-magit-winfo))
-         (buf (or prev-selected-buffer
+         (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
     (wlf:set-buffer magit-wm 'main buf)
     magit-wm))
@@ -301,7 +301,7 @@
 
 (defun e2wm:dp-vcs-monky (wm)
   (ad-deactivate-regexp "^e2wm:ad-override-monky$")
-  (setq prev-selected-buffer nil))
+  (setq e2wm:prev-selected-buffer nil))
 
 (defun e2wm:dp-monky-start (wm)
   (ad-activate-regexp "^e2wm:ad-override-monky$"))
@@ -309,7 +309,7 @@
 (defun e2wm:dp-monky-init ()
   (let* ((monky-wm
           (wlf:no-layout e2wm:c-monky-recipe e2wm:c-monky-winfo))
-         (buf (or prev-selected-buffer
+         (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
     (wlf:set-buffer monky-wm 'main buf)
     monky-wm))
@@ -449,12 +449,12 @@
    :keymap 'e2wm:dp-svn-minor-mode-map))
 
 (defun e2wm:dp-svn-leave (wm)
-  (setq prev-selected-buffer nil))
+  (setq e2wm:prev-selected-buffer nil))
 
 (defun e2wm:dp-svn-init ()
   (let* ((svn-wm 
           (wlf:no-layout e2wm:c-svn-recipe e2wm:c-svn-winfo))
-         (buf (or prev-selected-buffer
+         (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
     (wlf:set-buffer svn-wm 'main buf)
     svn-wm))
