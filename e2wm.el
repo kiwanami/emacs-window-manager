@@ -1171,27 +1171,41 @@ defined by the perspective."
           (setq ad-return-value (get-buffer-create buf)))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
+(defun e2wm:after-bury-buffer (buried-buffer window)
+  "[internal] This function is called after `bury-buffer' or
+`quit-window' call, resets the buffer tracked by e2wm and
+removes the buried buffer from the history list."
+  ;; manage the current buffer in e2wm
+  (e2wm:with-advice
+   (e2wm:pst-buffer-set (wlf:get-window-name (e2wm:pst-get-wm) window)
+                        (window-buffer window)))
+  ;; remove the buffer from the history
+  (when (get-buffer buried-buffer)
+    (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
+    (e2wm:history-delete buried-buffer))
+  ;; execute plugins -- only for history plugin.
+  (when this-command
+    (e2wm:pst-update-windows)))
+
 (defadvice quit-window (around
                         e2wm:ad-override
                         (&optional kill window))
-  "[internal] Advice to keep track of the buffer shown in the window.
-This advice catches `quit-window' call, resets the buffer tracked
-by e2wm and removes the buried buffer from the history list."
+  "[internal] call `e2wm:after-bury-buffer'."
   (e2wm:message "#QUIT-WINDOW %s %s" kill window)
   (let ((curwin (or window (selected-window)))
         (buffer (window-buffer window)))
     ad-do-it
-    ;; manage the current buffer in e2wm
-    (e2wm:with-advice
-     (e2wm:pst-buffer-set (wlf:get-window-name (e2wm:pst-get-wm) curwin)
-                          (window-buffer window)))
-    ;; remove the buffer from the history
-    (when (get-buffer buffer)
-      (e2wm:message "#REMOVED BUFFER %s" buffer)
-      (e2wm:history-delete buffer))
-    ;; execute plugins -- only for history plugin.
-    (when this-command
-      (e2wm:pst-update-windows))))
+    (e2wm:after-bury-buffer buffer curwin)))
+
+(defadvice bury-buffer (around
+                        e2wm:ad-override
+                        (&optional buffer-or-name))
+  "[internal] call `e2wm:after-bury-buffer'."
+  (e2wm:message "#BURY-BUFFER %s" buffer-or-name)
+  (let ((curwin (selected-window))
+        (buffer (window-normalize-buffer buffer-or-name)))
+    ad-do-it
+    (e2wm:after-bury-buffer buffer curwin)))
 
 (defun e2wm:override-special-display-function (buf &optional args)
   (e2wm:message "#SPECIAL-DISPLAY-FUNC %s / %S - %S" buf (not e2wm:ad-now-overriding) (e2wm:managed-p))
