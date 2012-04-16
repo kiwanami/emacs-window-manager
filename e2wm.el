@@ -1218,6 +1218,7 @@ Called via `kill-buffer-hook'."
              (buffers (e2wm:history-get-nearest killedbuf (length wins))))
         (loop for wname in wins
               for buf in buffers
+              when buf
               do (wlf:set-buffer wm wname buf))))
     ;; remove it from the history list
     (e2wm:history-delete (current-buffer))
