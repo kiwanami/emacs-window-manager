@@ -1277,9 +1277,13 @@ Called via `kill-buffer-hook'."
                          when (equal (wlf:get-buffer wm wname) killedbuf)
                          collect wname))
              (buffers (e2wm:history-get-nearest killedbuf (length wins))))
-        (loop for wname in wins
+        (loop with main-wname = (e2wm:$pst-main (e2wm:pst-get-instance))
+              for wname in wins
               for buf in buffers
-              do (wlf:set-buffer wm wname buf))))
+              do 
+              (when (equal wname main-wname)
+                (e2wm:history-add buf))
+              (wlf:set-buffer wm wname buf))))
     ;; remove it from the history list
     (e2wm:history-delete (current-buffer))
     (when this-command
@@ -1640,7 +1644,7 @@ management. For window-layout.el.")
                   (history-backup (reverse (e2wm:history-get-backup)))
                   (cnt 1))
               (loop for h in (append history-backup history)
-                    with main-buf = (car history)
+                    with main-buf = (e2wm:history-get-main-buffer)
                     for name = (if (stringp h) h (buffer-name h))
                     do (insert 
                         (e2wm:tp 
