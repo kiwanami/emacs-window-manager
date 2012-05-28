@@ -386,6 +386,10 @@
          ad-do-it
          (when default-wcfg
            (set-window-configuration default-wcfg))))
+     (defadvice elscreen-run-screen-update-hook (around e2wm:ad-override-els)
+       (flet ((e2wm:managed-p () nil))
+         ad-do-it
+         ))
 
      ;; apply defadvices to some elscreen functions
      (loop for i in '(elscreen-goto 

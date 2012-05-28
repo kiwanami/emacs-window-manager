@@ -1203,6 +1203,67 @@ defined by the perspective."
           (setq ad-return-value (get-buffer-create buf)))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
+(defun e2wm:after-bury-buffer (buried-buffer window)
+  "[internal] This function is called after `bury-buffer' or
+`quit-window' call, resets the buffer tracked by e2wm and
+removes the buried buffer from the history list."
+  ;; manage the current buffer in e2wm
+  (when (e2wm:managed-p)
+    (let ((win-name (wlf:get-window-name (e2wm:pst-get-wm) window)))
+      (when win-name
+        (e2wm:with-advice
+         (e2wm:pst-buffer-set win-name (window-buffer window))))
+      ;; remove the buffer from the history
+      (when (get-buffer buried-buffer)
+        (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
+        (e2wm:history-delete buried-buffer))
+      ;; execute plugins -- only for history plugin.
+      (when this-command
+        (e2wm:pst-update-windows)))))
+
+(defadvice quit-window (around
+                        e2wm:ad-override
+                        (&optional kill window))
+  "[internal] call `e2wm:after-bury-buffer'."
+  (cond
+   ((e2wm:managed-p)
+    (e2wm:message "#QUIT-WINDOW %s %s" kill window)
+    (let ((curwin (or window (selected-window)))
+          (buffer (window-buffer window)))
+      ad-do-it
+      (e2wm:after-bury-buffer buffer curwin)))
+   (t ad-do-it)))
+
+(eval-and-compile
+  (unless (fboundp 'window-normalize-buffer)
+    (defun window-normalize-buffer (buffer-or-name)
+      "Return buffer specified by BUFFER-OR-NAME.
+ (This function is copied from Emacs 24 for the fallback on Emacs 23.)"
+      (cond
+       ((not buffer-or-name)
+        (current-buffer))
+       ((bufferp buffer-or-name)
+        (if (buffer-live-p buffer-or-name)
+            buffer-or-name
+          (error "Buffer %s is not a live buffer" buffer-or-name)))
+       ((get-buffer buffer-or-name))
+       (t
+        (error "No such buffer %s" buffer-or-name))))))
+
+(defadvice bury-buffer (around
+                        e2wm:ad-override
+                        (&optional buffer-or-name))
+  "[internal] call `e2wm:after-bury-buffer'."
+  (cond
+   ((e2wm:managed-p)
+    (e2wm:message "#BURY-BUFFER %s" buffer-or-name)
+    (let ((curwin (selected-window))
+          (buffer (window-normalize-buffer buffer-or-name)))
+      ad-do-it
+      (e2wm:after-bury-buffer buffer curwin)))
+   (t ad-do-it)))
+
+
 (defun e2wm:override-special-display-function (buf &optional args)
   (e2wm:message "#SPECIAL-DISPLAY-FUNC %s / %S - %S" buf (not e2wm:ad-now-overriding) (e2wm:managed-p))
   (let (overrided)
@@ -1248,10 +1309,13 @@ Called via `kill-buffer-hook'."
                          when (equal (wlf:get-buffer wm wname) killedbuf)
                          collect wname))
              (buffers (e2wm:history-get-nearest killedbuf (length wins))))
-        (loop for wname in wins
+        (loop with main-wname = (e2wm:$pst-main (e2wm:pst-get-instance))
+              for wname in wins
               for buf in buffers
-              when buf
-              do (wlf:set-buffer wm wname buf))))
+              do 
+              (when (equal wname main-wname)
+                (e2wm:history-add buf))
+              (wlf:set-buffer wm wname buf))))
     ;; remove it from the history list
     (e2wm:history-delete (current-buffer))
     (when this-command
@@ -1612,7 +1676,7 @@ management. For window-layout.el.")
                   (history-backup (reverse (e2wm:history-get-backup)))
                   (cnt 1))
               (loop for h in (append history-backup history)
-                    with main-buf = (car history)
+                    with main-buf = (e2wm:history-get-main-buffer)
                     for name = (if (stringp h) h (buffer-name h))
                     do (insert 
                         (e2wm:tp 
