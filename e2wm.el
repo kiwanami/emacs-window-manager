@@ -1176,36 +1176,61 @@ defined by the perspective."
 `quit-window' call, resets the buffer tracked by e2wm and
 removes the buried buffer from the history list."
   ;; manage the current buffer in e2wm
-  (e2wm:with-advice
-   (e2wm:pst-buffer-set (wlf:get-window-name (e2wm:pst-get-wm) window)
-                        (window-buffer window)))
-  ;; remove the buffer from the history
-  (when (get-buffer buried-buffer)
-    (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
-    (e2wm:history-delete buried-buffer))
-  ;; execute plugins -- only for history plugin.
-  (when this-command
-    (e2wm:pst-update-windows)))
+  (when (e2wm:managed-p)
+    (let ((win-name (wlf:get-window-name (e2wm:pst-get-wm) window)))
+      (when win-name
+        (e2wm:with-advice
+         (e2wm:pst-buffer-set win-name (window-buffer window))))
+      ;; remove the buffer from the history
+      (when (get-buffer buried-buffer)
+        (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
+        (e2wm:history-delete buried-buffer))
+      ;; execute plugins -- only for history plugin.
+      (when this-command
+        (e2wm:pst-update-windows)))))
 
 (defadvice quit-window (around
                         e2wm:ad-override
                         (&optional kill window))
   "[internal] call `e2wm:after-bury-buffer'."
-  (e2wm:message "#QUIT-WINDOW %s %s" kill window)
-  (let ((curwin (or window (selected-window)))
-        (buffer (window-buffer window)))
-    ad-do-it
-    (e2wm:after-bury-buffer buffer curwin)))
+  (cond
+   ((e2wm:managed-p)
+    (e2wm:message "#QUIT-WINDOW %s %s" kill window)
+    (let ((curwin (or window (selected-window)))
+          (buffer (window-buffer window)))
+      ad-do-it
+      (e2wm:after-bury-buffer buffer curwin)))
+   (t ad-do-it)))
+
+(eval-and-compile
+  (unless (fboundp 'window-normalize-buffer)
+    (defun window-normalize-buffer (buffer-or-name)
+      "Return buffer specified by BUFFER-OR-NAME.
+ (This function is copied from Emacs 24 for the fallback on Emacs 23.)"
+      (cond
+       ((not buffer-or-name)
+        (current-buffer))
+       ((bufferp buffer-or-name)
+        (if (buffer-live-p buffer-or-name)
+            buffer-or-name
+          (error "Buffer %s is not a live buffer" buffer-or-name)))
+       ((get-buffer buffer-or-name))
+       (t
+        (error "No such buffer %s" buffer-or-name))))))
 
 (defadvice bury-buffer (around
                         e2wm:ad-override
                         (&optional buffer-or-name))
   "[internal] call `e2wm:after-bury-buffer'."
-  (e2wm:message "#BURY-BUFFER %s" buffer-or-name)
-  (let ((curwin (selected-window))
-        (buffer (window-normalize-buffer buffer-or-name)))
-    ad-do-it
-    (e2wm:after-bury-buffer buffer curwin)))
+  (cond
+   ((e2wm:managed-p)
+    (e2wm:message "#BURY-BUFFER %s" buffer-or-name)
+    (let ((curwin (selected-window))
+          (buffer (window-normalize-buffer buffer-or-name)))
+      ad-do-it
+      (e2wm:after-bury-buffer buffer curwin)))
+   (t ad-do-it)))
+
 
 (defun e2wm:override-special-display-function (buf &optional args)
   (e2wm:message "#SPECIAL-DISPLAY-FUNC %s / %S - %S" buf (not e2wm:ad-now-overriding) (e2wm:managed-p))
