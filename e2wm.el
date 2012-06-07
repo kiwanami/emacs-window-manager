@@ -2925,6 +2925,7 @@ string object to insert the imenu buffer."
    :main   'left
    :switch 'e2wm:dp-two-switch
    :popup  'e2wm:dp-two-popup
+   :display 'e2wm:dp-two-display
    :keymap 'e2wm:dp-two-minor-mode-map))
 
 (defun e2wm:dp-two-init ()
@@ -2995,6 +2996,25 @@ string object to insert the imenu buffer."
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
      (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
+
+(defun e2wm:dp-two-display (buf)
+  "Show in sub if it is not recordable or document buffer.  Do not select."
+  (e2wm:message "#DP TWO display : %s" buf)
+  (cond
+   ((e2wm:document-buffer-p buf)
+    (e2wm:pst-buffer-set 'right buf)
+    t)
+   ((e2wm:history-recordable-p buf)
+    (let ((wm (e2wm:pst-get-wm))
+          (curwin (selected-window)))
+      ;; show in the other window, but don't select.
+      (if (eql curwin (wlf:get-window wm 'left))
+          (e2wm:pst-buffer-set 'right buf)
+        (e2wm:pst-buffer-set 'left buf)))
+    t)
+   (t
+    (e2wm:pst-buffer-set 'sub buf t)
+    t)))
 
 ;; Commands / Keybindings
 
