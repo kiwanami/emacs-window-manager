@@ -626,7 +626,9 @@ Note that `prev-selected-buffer' is obsolete now.")
 ;;         : If this function returns non-nil, the original function `switch-to-buffer' is not evaluated.
 ;;         : If the plug-ins need to be updated, this function should call the 
 ;;         : `e2wm:pst-update-windows' to update the plug-ins.
-;; popup   : This function overrides `pop-to-buffer' and `special-display-func'. (Arguments: `buffer')
+;; popup   : This function overrides `pop-to-buffer'. (Arguments: `buffer')
+;;         : See the `switch' spec for detail.
+;; display : This function overrides `special-display-func'. (Arguments: `buffer')
 ;;         : See the `switch' spec for detail.
 ;; leave   : This function cleans up buffers and some variables for leaving the perspective.
 ;;         : (Arguments: `wm')
@@ -636,7 +638,7 @@ Note that `prev-selected-buffer' is obsolete now.")
 
 (defstruct e2wm:$pst-class 
   name title extend
-  init main start update switch popup leave
+  init main start update switch popup display leave
   keymap save)
 
 (defun e2wm:pst-class-register (pst-class)
@@ -810,6 +812,11 @@ are created."
   "[internal] Delegate the `popup' function of the current perspective."
   (e2wm:message "#PST-POPUP %s" buf)
   (e2wm:pst-method-call e2wm:$pst-class-popup (e2wm:pst-get-instance) buf))
+
+(defun e2wm:pst-display-buffer (buf)
+  "[internal] Delegate the `display' function of the current perspective."
+  (e2wm:message "#PST-DISPLAY %s" buf)
+  (e2wm:pst-method-call e2wm:$pst-class-display (e2wm:pst-get-instance) buf))
 
 (defun e2wm:pst-change (next-pst-name)
   "Leave the current perspective and start the new perspective."
@@ -1277,7 +1284,7 @@ removes the buried buffer from the history list."
        (e2wm:message "#AD-SPECIAL-DISPLAY-FUNC %s" buf)
        (e2wm:history-add buf)
        (save-excursion
-         (setq overrided (e2wm:pst-pop-to-buffer (get-buffer-create buf))))))
+         (setq overrided (e2wm:pst-display-buffer (get-buffer-create buf))))))
     (if overrided
         (progn 
           ;(set-buffer buf)
@@ -2737,11 +2744,16 @@ string object to insert the imenu buffer."
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'base
+   :display 'e2wm:dp-base-display
    :update 'e2wm:dp-base-update))
 
 (defun e2wm:dp-base-update (wm)
   ;;プラグイン更新実行
   (e2wm:plugin-exec-update (selected-frame) wm))
+
+(defun e2wm:dp-base-display (buf)
+  ;; delegate to the popup method
+  (e2wm:pst-pop-to-buffer buf))
 
 
 ;;; code / Code editing perspective
