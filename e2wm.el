@@ -2918,15 +2918,15 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
-   :name   'two
-   :extend 'base
-   :title  "Two Columns"
-   :init   'e2wm:dp-two-init
-   :main   'left
-   :switch 'e2wm:dp-two-switch
-   :popup  'e2wm:dp-two-popup
+   :name    'two
+   :extend  'base
+   :title   "Two Columns"
+   :init    'e2wm:dp-two-init
+   :main    'left
+   :switch  'e2wm:dp-two-switch
+   :popup   'e2wm:dp-two-popup
    :display 'e2wm:dp-two-display
-   :keymap 'e2wm:dp-two-minor-mode-map))
+   :keymap  'e2wm:dp-two-minor-mode-map))
 
 (defun e2wm:dp-two-init ()
   (let* 
@@ -2949,47 +2949,48 @@ string object to insert the imenu buffer."
     two-wm))
 
 (defun e2wm:dp-two-switch (buf)
+  "Switch to the buffer BUF.  If in the left window the buffer
+BUF is same as the shown one, show the same buffer on the right
+window too."
   (e2wm:message "#DP TWO switch : %s" buf)
   (let ((wm (e2wm:pst-get-wm))
         (curwin (selected-window)))
     (cond
-     ((eql curwin (wlf:get-window wm 'left))
-      ;; left画面の場合
-      (cond 
+     ((eql curwin (wlf:get-window wm 'left)) ; in left window
+      (cond
        ((eql (get-buffer buf) (wlf:get-buffer wm 'left))
-        ;; leftと同じなら並べる
+        ;; switching to the same buffer.  show it in the right.
         (e2wm:pst-update-windows)
         (e2wm:pst-buffer-set 'right buf)
         t)
        ((e2wm:history-recordable-p buf)
-        ;; 普通の編集対象なら履歴につっこんで更新
+        ;; put in the history and show if it is a recordable
         (e2wm:pst-show-history-main)
         t)
-       (t 
-        ;; それ以外ならとりあえず表示してみる
+       (t
+        ;; otherwise, do the default
         nil)))
 
-     ((eql curwin (wlf:get-window wm 'right))
-      ;; right画面の場合
+     ((eql curwin (wlf:get-window wm 'right)) ; in right window
       (e2wm:pst-buffer-set 'right buf)
       (e2wm:dp-two-update-history-list)
       nil)
      (t nil))))
 
 (defun e2wm:dp-two-popup (buf)
-  ;;記録バッファ以外はsubで表示してみる
+  "Show the buffer BUF in sub if it is not recordable or document buffer.
+Otherwise show and select it."
   (e2wm:message "#DP TWO popup : %s" buf)
-  (let ((buf-name (buffer-name buf)))
-    (cond
-     ((e2wm:document-buffer-p buf)
-      (e2wm:pst-buffer-set 'right buf)
-      t)
-     ((e2wm:history-recordable-p buf)
-      (e2wm:pst-show-history-main)
-      t)
-     (t
-      (e2wm:dp-two-popup-sub buf)
-      t))))
+  (cond
+   ((e2wm:document-buffer-p buf)
+    (e2wm:pst-buffer-set 'right buf)
+    t)
+   ((e2wm:history-recordable-p buf)
+    (e2wm:pst-show-history-main)
+    t)
+   (t
+    (e2wm:dp-two-popup-sub buf)
+    t)))
 
 (defun e2wm:dp-two-popup-sub (buf)
   (let ((wm (e2wm:pst-get-wm))
@@ -2998,7 +2999,8 @@ string object to insert the imenu buffer."
      (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
 
 (defun e2wm:dp-two-display (buf)
-  "Show in sub if it is not recordable or document buffer.  Do not select."
+  "Show the buffer BUF in sub if it is not recordable or document buffer.
+Do not select the buffer."
   (e2wm:message "#DP TWO display : %s" buf)
   (cond
    ((e2wm:document-buffer-p buf)
