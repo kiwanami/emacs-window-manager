@@ -632,7 +632,7 @@ Note that `prev-selected-buffer' is obsolete now.")
 ;;         : See the `switch' spec for detail.
 ;; after-bury : This function is called after `bury-buffer' or `quit-window'
 ;;            : unlike other pst-class methods, this method does not override
-;;            : the original functions.
+;;            : the original functions.  (Arguments: `buried-buffer' `window')
 ;; leave   : This function cleans up buffers and some variables for leaving the perspective.
 ;;         : (Arguments: `wm')
 ;;         : If this slot is nil, the e2wm does nothing during leaving the perspective.
