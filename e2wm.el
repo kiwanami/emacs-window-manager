@@ -2800,6 +2800,7 @@ string object to insert the imenu buffer."
    :main   'main
    :switch 'e2wm:dp-code-switch
    :popup  'e2wm:dp-code-popup
+   :after-bury 'e2wm:dp-code-after-bury
    :keymap 'e2wm:dp-code-minor-mode-map))
 
 (defun e2wm:dp-code-init ()
@@ -2859,6 +2860,12 @@ string object to insert the imenu buffer."
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
      (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
+
+(defun e2wm:dp-code-after-bury (buried-buffer window)
+  "Close sub window if it is the current window."
+  (e2wm:$pst-class-super)
+  (when (eq (wlf:get-window-name (e2wm:pst-get-wm) window) 'sub)
+    (wlf:hide (e2wm:pst-get-wm) 'sub)))
 
 ;; Commands / Keybindings
 
@@ -2938,6 +2945,7 @@ string object to insert the imenu buffer."
    :switch  'e2wm:dp-two-switch
    :popup   'e2wm:dp-two-popup
    :display 'e2wm:dp-two-display
+   :after-bury 'e2wm:dp-two-after-bury
    :keymap  'e2wm:dp-two-minor-mode-map))
 
 (defun e2wm:dp-two-init ()
@@ -3029,6 +3037,12 @@ Do not select the buffer."
    (t
     (e2wm:pst-buffer-set 'sub buf t)
     t)))
+
+(defun e2wm:dp-two-after-bury (buried-buffer window)
+  "Close sub window if it is the current window."
+  (e2wm:$pst-class-super)
+  (when (eq (wlf:get-window-name (e2wm:pst-get-wm) window) 'sub)
+    (wlf:hide (e2wm:pst-get-wm) 'sub)))
 
 ;; Commands / Keybindings
 
