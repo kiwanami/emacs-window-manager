@@ -2740,10 +2740,10 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
-   :name   'base
-   :display 'e2wm:dp-base-display
+   :name       'base
+   :display    'e2wm:dp-base-display
    :after-bury 'e2wm:dp-base-after-bury
-   :update 'e2wm:dp-base-update))
+   :update     'e2wm:dp-base-update))
 
 (defun e2wm:dp-base-update (wm)
   ;;プラグイン更新実行
