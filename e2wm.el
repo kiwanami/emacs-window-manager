@@ -2793,15 +2793,15 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
-   :name   'code
-   :extend 'base
-   :title  "Coding"
-   :init   'e2wm:dp-code-init
-   :main   'main
-   :switch 'e2wm:dp-code-switch
-   :popup  'e2wm:dp-code-popup
+   :name       'code
+   :extend     'base
+   :title      "Coding"
+   :init       'e2wm:dp-code-init
+   :main       'main
+   :switch     'e2wm:dp-code-switch
+   :popup      'e2wm:dp-code-popup
    :after-bury 'e2wm:dp-code-after-bury
-   :keymap 'e2wm:dp-code-minor-mode-map))
+   :keymap     'e2wm:dp-code-minor-mode-map))
 
 (defun e2wm:dp-code-init ()
   (let* 
@@ -2937,16 +2937,16 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
-   :name    'two
-   :extend  'base
-   :title   "Two Columns"
-   :init    'e2wm:dp-two-init
-   :main    'left
-   :switch  'e2wm:dp-two-switch
-   :popup   'e2wm:dp-two-popup
-   :display 'e2wm:dp-two-display
+   :name       'two
+   :extend     'base
+   :title      "Two Columns"
+   :init       'e2wm:dp-two-init
+   :main       'left
+   :switch     'e2wm:dp-two-switch
+   :popup      'e2wm:dp-two-popup
+   :display    'e2wm:dp-two-display
    :after-bury 'e2wm:dp-two-after-bury
-   :keymap  'e2wm:dp-two-minor-mode-map))
+   :keymap     'e2wm:dp-two-minor-mode-map))
 
 (defun e2wm:dp-two-init ()
   (let* 
