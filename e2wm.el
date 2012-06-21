@@ -2864,8 +2864,9 @@ string object to insert the imenu buffer."
 (defun e2wm:dp-code-after-bury (buried-buffer window)
   "Close sub window if it is the current window."
   (e2wm:$pst-class-super)
-  (when (eq (wlf:get-window-name (e2wm:pst-get-wm) window) 'sub)
-    (wlf:hide (e2wm:pst-get-wm) 'sub)))
+  (let ((wm (e2wm:pst-get-wm)))
+    (when (eq (wlf:get-window-name wm window) 'sub)
+      (wlf:hide wm 'sub))))
 
 ;; Commands / Keybindings
 
@@ -3041,8 +3042,9 @@ Do not select the buffer."
 (defun e2wm:dp-two-after-bury (buried-buffer window)
   "Close sub window if it is the current window."
   (e2wm:$pst-class-super)
-  (when (eq (wlf:get-window-name (e2wm:pst-get-wm) window) 'sub)
-    (wlf:hide (e2wm:pst-get-wm) 'sub)))
+  (let ((wm (e2wm:pst-get-wm)))
+    (when (eq (wlf:get-window-name wm window) 'sub)
+      (wlf:hide wm 'sub))))
 
 ;; Commands / Keybindings
 
