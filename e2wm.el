@@ -2866,7 +2866,8 @@ string object to insert the imenu buffer."
   (e2wm:$pst-class-super)
   (let ((wm (e2wm:pst-get-wm)))
     (when (eq (wlf:get-window-name wm window) 'sub)
-      (wlf:hide wm 'sub))))
+      (wlf:hide wm 'sub)
+      (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
 ;; Commands / Keybindings
 
@@ -3044,7 +3045,8 @@ Do not select the buffer."
   (e2wm:$pst-class-super)
   (let ((wm (e2wm:pst-get-wm)))
     (when (eq (wlf:get-window-name wm window) 'sub)
-      (wlf:hide wm 'sub))))
+      (wlf:hide wm 'sub)
+      (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
 ;; Commands / Keybindings
 
