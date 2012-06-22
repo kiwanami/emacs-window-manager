@@ -432,7 +432,8 @@ sequence. ROWS is a list of string."
 
 (defun e2wm:history-get ()
   "Return a list of buffer history from the current frame."
-  (e2wm:frame-param-get 'e2wm:buffer-history))
+  (e2wm:history-filter-killed-buffers
+   (e2wm:frame-param-get 'e2wm:buffer-history)))
 
 (defun e2wm:history-save (buffer-history)
   "Save the given list as buffer history in the current frame."
@@ -442,8 +443,9 @@ sequence. ROWS is a list of string."
 
 (defun e2wm:history-get-backup ()
   "Return a list of buffer backup-history."
-  (e2wm:frame-param-get
-   'e2wm:buffer-history-backup))
+  (e2wm:history-filter-killed-buffers
+   (e2wm:frame-param-get
+    'e2wm:buffer-history-backup)))
 
 (defun e2wm:history-save-backup (buffer-history-backup)
   "Save the given list as buffer backup-history."
@@ -451,6 +453,12 @@ sequence. ROWS is a list of string."
    'e2wm:buffer-history-backup
    buffer-history-backup)
   buffer-history-backup)
+
+(defun e2wm:history-filter-killed-buffers (history)
+  "[internal] filter killed buffers"
+  (loop for buf in history
+        when (buffer-live-p buf)
+        collect buf))
 
 (defun e2wm:history-recordable-p (buffer)
   "If BUFFER should be record in buffer history, return t.
