@@ -1952,19 +1952,21 @@ management. For window-layout.el.")
 
 (defun e2wm:def-plugin-imenu-entries ()
   "[internal] Return a list of imenu items to insert the imenu buffer."
-  (with-current-buffer (e2wm:history-get-main-buffer)
-    (let ((tick (buffer-modified-tick)))
-      (if (and (eq e2wm:def-plugin-imenu-cached-tick tick)
-               e2wm:def-plugin-imenu-cached-entries)
-          e2wm:def-plugin-imenu-cached-entries
-        (setq imenu--index-alist nil)
-        (setq e2wm:def-plugin-imenu-cached-tick tick
+  (let ((buf (e2wm:history-get-main-buffer)))
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        (let ((tick (buffer-modified-tick)))
+          (if (and (eq e2wm:def-plugin-imenu-cached-tick tick)
+                   e2wm:def-plugin-imenu-cached-entries)
               e2wm:def-plugin-imenu-cached-entries
-              (condition-case nil
-                  (nreverse
-                   (e2wm:def-plugin-imenu-create-entries
-                    (imenu--make-index-alist) "" nil))
-                (error nil)))))))
+            (setq imenu--index-alist nil)
+            (setq e2wm:def-plugin-imenu-cached-tick tick
+                  e2wm:def-plugin-imenu-cached-entries
+                  (condition-case nil
+                      (nreverse
+                       (e2wm:def-plugin-imenu-create-entries
+                        (imenu--make-index-alist) "" nil))
+                    (error nil)))))))))
 
 (defun e2wm:def-plugin-imenu-create-entries (entries indent result)
   "[internal] Make a menu item from the imenu object and return a
