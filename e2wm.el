@@ -237,8 +237,8 @@ equals to NAME in the given sequence SEQ."
 
 (defmacro e2wm:message (&rest args) ; debug
   "Output a message into the debug buffer: *e2wm:debug*."
-  (when e2wm:debug
-    `(progn 
+  `(when e2wm:debug
+     (progn
        (with-current-buffer (get-buffer-create "*e2wm:debug*")
          (save-excursion
            (goto-char (point-max))
