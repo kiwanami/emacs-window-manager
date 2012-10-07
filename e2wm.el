@@ -822,7 +822,7 @@ are created."
   (e2wm:pst-method-call e2wm:$pst-class-display (e2wm:pst-get-instance) buf))
 
 (defun e2wm:pst-after-bury-buffer (buried-buffer window)
-  (e2wm:message "#PST-AFTER-BURY %s" buf)
+  (e2wm:message "#PST-AFTER-BURY %s" buried-buffer)
   (e2wm:pst-method-call e2wm:$pst-class-after-bury (e2wm:pst-get-instance)
                         buried-buffer window))
 
