@@ -2960,7 +2960,7 @@ string object to insert the imenu buffer."
       ;; right画面の場合
       (e2wm:pst-buffer-set 'right buf)
       (e2wm:dp-two-update-history-list)
-      nil)
+      t)
      (t nil))))
 
 (defun e2wm:dp-two-popup (buf)
