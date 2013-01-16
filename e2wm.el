@@ -1268,6 +1268,8 @@ removes the buried buffer from the history list."
 
 (defun e2wm:override-special-display-function (buf &optional args)
   (e2wm:message "#SPECIAL-DISPLAY-FUNC %s / %S - %S" buf (not e2wm:ad-now-overriding) (e2wm:managed-p))
+  (unless (buffer-live-p buf)    ; similar code is in `display-buffer'
+    (error "Invalid buffer"))
   (let (overrided)
     (when (and 
            buf 
