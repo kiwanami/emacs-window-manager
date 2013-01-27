@@ -8,8 +8,7 @@
 
 (When "^I switch to \"\\(.+\\)\" perspective$"
       (lambda (pst)
-        (let ((pst-starter (intern (format "e2wm:dp-%s" pst))))
-          (funcall pst-starter))))
+        (e2wm:pst-change (intern pst))))
 
 (Then "^I should\\( not\\|\\) see window \"\\(.+\\)\"$"
       (lambda (not window)
@@ -44,6 +43,10 @@
 (And "^I switch to a buffer \"\\(.+\\)\"$"
      (lambda (buffer-name)
        (switch-to-buffer (get-buffer-create buffer-name))))
+
+(And "^I switch to window \"\\(.+\\)\"$"
+     (lambda (window-name)
+       (e2wm:pst-window-select (intern window-name))))
 
 (defun e2wm:testing-separate-table (rows)
   (let ((backup-p t)
@@ -82,3 +85,10 @@
 
 (And "^I go back history$"
      'e2wm:pst-history-back-command)
+
+(And "^I execute a command that reopens buffer \"\\(.+\\)\" in other window$"
+     (lambda (buffer-name)
+       ;; This emulates `vc-follow-link':
+       (let ((this-command 'dummy-command))
+         (kill-buffer (get-buffer-create buffer-name))
+         (switch-to-buffer-other-window (get-buffer-create buffer-name)))))

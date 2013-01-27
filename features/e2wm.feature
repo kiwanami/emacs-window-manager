@@ -17,6 +17,40 @@ Feature: Simple window management
     Then I should be in window "sub"
      And I should be in buffer "*Help*"
 
+  Scenario: When in left window, open buffer in right window
+    Given I enabled e2wm
+    When I switch to "stwo" perspective
+    Then I should be in window "left"
+     And I switch to a buffer "recordable-1"
+    When I have a popup buffer "recordable-2"
+    Then I should be in window "right"
+     And I should be in buffer "recordable-2"
+    When I switch to window "left"
+    Then I should be in buffer "recordable-1"
+
+  Scenario: When in right window, open buffer in left window
+    Given I enabled e2wm
+    When I switch to "stwo" perspective
+     And I switch to window "right"
+     And I switch to a buffer "recordable-1"
+    When I have a popup buffer "recordable-2"
+    Then I should be in window "left"
+     And I should be in buffer "recordable-2"
+    When I switch to window "right"
+    Then I should be in buffer "recordable-1"
+
+  @failing
+  Scenario: Do not show blank buffer when opening a file in VC (#46)
+    Given I enabled e2wm
+    When I switch to "stwo" perspective
+    Then I should be in window "left"
+     And I switch to a buffer "recordable-1"
+     And I execute a command that reopens buffer "recordable-2" in other window
+    Then I should be in window "right"
+     And I should be in buffer "recordable-2"
+    When I switch to window "left"
+     And I should be in buffer "recordable-1"
+
 
 Feature: History management
   In order to organize buffers
