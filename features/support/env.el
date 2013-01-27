@@ -22,6 +22,10 @@
 
 (Setup
  ;; Before anything has run
+ (setq e2wm:c-recordable-buffer-p
+       (lambda (buf)
+         (e2wm:aand (buffer-name buf)
+                    (string-prefix-p "recordable" it t))))
  (e2wm:stop-management t))
 
 (Before

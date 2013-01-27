@@ -40,3 +40,39 @@
 (And "^I have a popup buffer \"\\(.+\\)\"$"
      (lambda (buffer-name)
        (pop-to-buffer (get-buffer-create buffer-name))))
+
+(And "^I switch to a buffer \"\\(.+\\)\"$"
+     (lambda (buffer-name)
+       (switch-to-buffer (get-buffer-create buffer-name))))
+
+(defun e2wm:testing-separate-table (rows)
+  (let ((backup-p t)
+        history-backup history)
+    (mapc (lambda (row)
+            (when (not (equal (car row) ""))
+              (setq backup-p nil))
+            (if backup-p
+                (push (cadr row) history-backup)
+              (push (cadr row) history)))
+          rows)
+    (list history-backup
+          (nreverse history))))
+
+(Then "^I should have these buffers in history:$"
+      (lambda (table)
+        (let* ((header (car table))
+               (packed (e2wm:testing-separate-table (cdr table)))
+               (given-backup (car packed))
+               (given-history (cadr packed))
+               (actual-backup (mapcar #'buffer-name (e2wm:history-get-backup)))
+               (actual-history (mapcar #'buffer-name (e2wm:history-get))))
+          (assert
+           (equal given-history actual-history)
+           nil
+           "I have different history: %S"
+           actual-history)
+          (assert
+           (equal given-backup actual-backup)
+           nil
+           "I have different history-backup: %S"
+           actual-backup))))
