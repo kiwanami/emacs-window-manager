@@ -25,16 +25,23 @@
  (setq e2wm:c-recordable-buffer-p
        (lambda (buf)
          (e2wm:aand (buffer-name buf)
-                    (string-prefix-p "recordable" it t))))
- (e2wm:stop-management t))
+                    (string-prefix-p "recordable" it t)))))
 
 (Before
  ;; Before each scenario is run
- )
+ ;; Remove recordable buffers:
+ (mapc (lambda (buf)
+         (when (e2wm:history-recordable-p buf)
+           (kill-buffer buf)))
+       (buffer-list))
+ ;; Clear history:
+ (e2wm:history-save nil)
+ (e2wm:history-save-backup nil))
 
 (After
  ;; After each scenario is run
- )
+ ;; Exit from e2wm management:
+ (e2wm:stop-management t))
 
 (Teardown
  ;; After when everything has been run
