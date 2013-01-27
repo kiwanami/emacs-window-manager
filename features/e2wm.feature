@@ -51,6 +51,14 @@ Feature: Simple window management
     When I switch to window "left"
      And I should be in buffer "recordable-1"
 
+  @failing
+  Scenario: Killing the blank buffer should not cause a problem (#42)
+    Given I enabled e2wm
+    When I switch to "code" perspective
+     And I switch to a buffer " *e2wm:blank*"
+     And I press "C-x k RET"
+     And I switch to buffer "recordable"
+     And I press "C-x k RET"
 
 Feature: History management
   In order to organize buffers
