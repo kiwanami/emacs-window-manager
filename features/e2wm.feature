@@ -8,3 +8,11 @@ Feature: Simple window management
     Then I should see window "imenu"
     When I press "C-c ; I"
     Then I should not see window "imenu"
+
+  Scenario: Pop to help buffer
+    Given I enabled e2wm
+    When I switch to "code" perspective
+    Then I should be in window "main"
+    When I have a popup buffer "*Help*"
+    Then I should be in window "sub"
+     And I should be in buffer "*Help*"
