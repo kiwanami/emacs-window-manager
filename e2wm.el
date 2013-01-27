@@ -697,9 +697,10 @@ slots (i.e., `:init' and `:title')."
 ;;
 ;; name    : A symbol for this perspective
 ;; wm      : wlf layout object
+;; focus   : name of focused window (if any)
 ;; type    : A reference to the perspective class object
 
-(defstruct e2wm:$pst name wm type)
+(defstruct e2wm:$pst name wm focus type)
 
 (defun e2wm:$pst-get-prop (name pst)
   "[internal] Return the value of this perspective."
@@ -792,6 +793,7 @@ See `e2wm:method-call' for implementation."
     (make-e2wm:$pst
      :name   (e2wm:$pst-name   i)
      :wm     (wlf:copy-windows (e2wm:pst-get-wm))
+     :focus  (wlf:get-window-name (e2wm:pst-get-wm) (selected-window))
      :type   (e2wm:$pst-type   i))))
 
 (defun e2wm:pst-get-wm ()
