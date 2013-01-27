@@ -793,7 +793,10 @@ See `e2wm:method-call' for implementation."
     (make-e2wm:$pst
      :name   (e2wm:$pst-name   i)
      :wm     (wlf:copy-windows (e2wm:pst-get-wm))
-     :focus  (wlf:get-window-name (e2wm:pst-get-wm) (selected-window))
+     :focus  (wlf:get-window-name (e2wm:pst-get-wm)
+                                  (if (= (minibuffer-depth) 0)
+                                      (selected-window)
+                                    (minibuffer-selected-window)))
      :type   (e2wm:$pst-type   i))))
 
 (defun e2wm:pst-get-wm ()
