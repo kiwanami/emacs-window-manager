@@ -76,3 +76,9 @@
            nil
            "I have different history-backup: %S"
            actual-backup))))
+
+(And "^I go forward history$"
+     'e2wm:pst-history-forward-command)
+
+(And "^I go back history$"
+     'e2wm:pst-history-back-command)
