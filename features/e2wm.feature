@@ -17,6 +17,27 @@ Feature: Simple window management
     Then I should be in window "sub"
      And I should be in buffer "*Help*"
 
+  Scenario: Toggle maximize
+    Given I enabled e2wm
+    When I switch to "code" perspective
+    Then I should see these windows:
+      | Window names |
+      | main         |
+      | files        |
+      | history      |
+      | imenu        |
+     And I press "C-c ; M"
+    Then I should see these windows:
+      | Window names |
+      | main         |
+     And I press "C-c ; M"
+    Then I should see these windows:
+      | Window names |
+      | main         |
+      | files        |
+      | history      |
+      | imenu        |
+
   Scenario: When in left window, open buffer in right window
     Given I enabled e2wm
     When I switch to "stwo" perspective

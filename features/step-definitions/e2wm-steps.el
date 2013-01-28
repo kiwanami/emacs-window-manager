@@ -46,6 +46,23 @@
            "Expected to see buffer %S in window %S but got %S."
            buffer-name window-name (buffer-name actual-buffer)))))
 
+(Then "^I should see these windows:$"
+      (lambda (table)
+        (let* ((wm (e2wm:pst-get-wm))
+               (header (car table))
+               (desired-names (sort (mapcar #'car (cdr table))
+                                    #'string-lessp))
+               (actual-names
+                (sort (mapcar
+                       (lambda (w) (symbol-name (wlf:get-window-name wm w)))
+                       (window-list))
+                      #'string-lessp)))
+          (assert
+           (equal actual-names desired-names)
+           nil
+           "I have different set of windows: %S"
+           actual-names))))
+
 (And "^I have a popup buffer \"\\(.+\\)\"$"
      (lambda (buffer-name)
        (pop-to-buffer (get-buffer-create buffer-name))))
