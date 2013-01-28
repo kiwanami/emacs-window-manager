@@ -36,6 +36,16 @@
            "I should%s be in window named %s, but in %s."
            not given-wname cur-wname))))
 
+(Then "^I should see buffer \"\\(.+\\)\" in window \"\\(.+\\)\"$"
+      (lambda (buffer-name window-name)
+        (let* ((wm (e2wm:pst-get-wm))
+               (actual-buffer (wlf:get-buffer wm (intern window-name))))
+          (assert
+           (equal buffer-name (buffer-name actual-buffer))
+           nil
+           "Expected to see buffer %S in window %S but got %S."
+           buffer-name window-name (buffer-name actual-buffer)))))
+
 (And "^I have a popup buffer \"\\(.+\\)\"$"
      (lambda (buffer-name)
        (pop-to-buffer (get-buffer-create buffer-name))))

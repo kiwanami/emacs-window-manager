@@ -66,7 +66,9 @@ Feature: Simple window management
     When I switch to "stwo" perspective
      And I switch to window "right"
      And I press "C-x C-f ~ / TAB TAB"
+    Then I should see buffer "*Completions*" in window "sub"
      And I quit
+    Then I should not see window "sub"
     Then I should be in window "right"
 
 Feature: History management
