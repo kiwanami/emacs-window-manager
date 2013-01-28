@@ -60,6 +60,15 @@ Feature: Simple window management
      And I switch to buffer "recordable"
      And I press "C-x k RET"
 
+  @failing
+  Scenario: Completing window should not move focused window
+    Given I enabled e2wm
+    When I switch to "stwo" perspective
+     And I switch to window "right"
+     And I press "C-x C-f ~ / TAB TAB"
+     And I quit
+    Then I should be in window "right"
+
 Feature: History management
   In order to organize buffers
   As a user
