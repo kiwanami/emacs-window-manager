@@ -1,7 +1,7 @@
 CARTON ?= carton
 ECUKES ?= $(shell find elpa/ecukes-*/ecukes | tail -1)
 
-ecukes-features:
+ecukes-features: elpa
 	${CARTON} exec ${ECUKES} features
 
 elpa:
@@ -10,3 +10,8 @@ elpa:
 
 clean-elpa:
 	rm -rf elpa
+
+clean-elc:
+	rm -f *.elc
+
+clean: clean-elpa clean-elc
