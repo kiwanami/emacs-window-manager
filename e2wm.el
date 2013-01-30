@@ -3005,16 +3005,15 @@ Otherwise show and select it."
 Do not select the buffer."
   (e2wm:message "#DP TWO display : %s" buf)
   (cond
-   ((e2wm:document-buffer-p buf)
-    (e2wm:pst-buffer-set 'right buf)
-    t)
-   ((e2wm:history-recordable-p buf)
+   ((or (e2wm:history-recordable-p buf) ; we don't need to distinguish
+        (e2wm:document-buffer-p buf))   ; these two as we don't select
     (let ((wm (e2wm:pst-get-wm))
           (curwin (selected-window)))
       ;; show in the other window, but don't select.
       (if (eql curwin (wlf:get-window wm 'left))
           (e2wm:pst-buffer-set 'right buf)
         (e2wm:pst-buffer-set 'left buf)))
+    (e2wm:pst-update-windows)           ; update plugins, etc.
     t)
    (t
     (e2wm:pst-buffer-set 'sub buf t)
