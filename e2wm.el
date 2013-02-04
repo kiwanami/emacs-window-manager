@@ -630,6 +630,9 @@ Note that `prev-selected-buffer' is obsolete now.")
 ;;         : See the `switch' spec for detail.
 ;; display : This function overrides `special-display-func'. (Arguments: `buffer')
 ;;         : See the `switch' spec for detail.
+;; after-bury : This function is called after `bury-buffer' or `quit-window'
+;;            : unlike other pst-class methods, this method does not override
+;;            : the original functions.  (Arguments: `buried-buffer' `window')
 ;; leave   : This function cleans up buffers and some variables for leaving the perspective.
 ;;         : (Arguments: `wm')
 ;;         : If this slot is nil, the e2wm does nothing during leaving the perspective.
@@ -638,7 +641,7 @@ Note that `prev-selected-buffer' is obsolete now.")
 
 (defstruct e2wm:$pst-class 
   name title extend
-  init main start update switch popup display leave
+  init main start update switch popup display after-bury leave
   keymap save)
 
 (defun e2wm:pst-class-register (pst-class)
@@ -817,6 +820,11 @@ are created."
   "[internal] Delegate the `display' function of the current perspective."
   (e2wm:message "#PST-DISPLAY %s" buf)
   (e2wm:pst-method-call e2wm:$pst-class-display (e2wm:pst-get-instance) buf))
+
+(defun e2wm:pst-after-bury-buffer (buried-buffer window)
+  (e2wm:message "#PST-AFTER-BURY %s" buried-buffer)
+  (e2wm:pst-method-call e2wm:$pst-class-after-bury (e2wm:pst-get-instance)
+                        buried-buffer window))
 
 (defun e2wm:pst-change (next-pst-name)
   "Leave the current perspective and start the new perspective."
@@ -1216,19 +1224,8 @@ defined by the perspective."
   "[internal] This function is called after `bury-buffer' or
 `quit-window' call, resets the buffer tracked by e2wm and
 removes the buried buffer from the history list."
-  ;; manage the current buffer in e2wm
   (when (e2wm:managed-p)
-    (let ((win-name (wlf:get-window-name (e2wm:pst-get-wm) window)))
-      (when win-name
-        (e2wm:with-advice
-         (e2wm:pst-buffer-set win-name (window-buffer window))))
-      ;; remove the buffer from the history
-      (when (get-buffer buried-buffer)
-        (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
-        (e2wm:history-delete buried-buffer))
-      ;; execute plugins -- only for history plugin.
-      (when this-command
-        (e2wm:pst-update-windows)))))
+    (e2wm:pst-after-bury-buffer buried-buffer window)))
 
 (defadvice quit-window (around
                         e2wm:ad-override
@@ -2747,9 +2744,10 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
-   :name   'base
-   :display 'e2wm:dp-base-display
-   :update 'e2wm:dp-base-update))
+   :name       'base
+   :display    'e2wm:dp-base-display
+   :after-bury 'e2wm:dp-base-after-bury
+   :update     'e2wm:dp-base-update))
 
 (defun e2wm:dp-base-update (wm)
   ;;プラグイン更新実行
@@ -2758,6 +2756,27 @@ string object to insert the imenu buffer."
 (defun e2wm:dp-base-display (buf)
   ;; delegate to the popup method
   (e2wm:pst-pop-to-buffer buf))
+
+(defun e2wm:dp-base-after-bury (buried-buffer window)
+  (let ((win-name (wlf:get-window-name (e2wm:pst-get-wm) window)))
+    ;; manage the current buffer in e2wm
+    (when win-name
+      (e2wm:with-advice
+       (e2wm:pst-buffer-set win-name (window-buffer window))))
+    ;; remove the buffer from the history if it is the last buffer in
+    ;; the current frame
+    (when (loop for other-win in (window-list)
+                for other-buf = (window-buffer other-win)
+                when (and (eq other-buf buried-buffer)
+                          (not (eq other-win window)))
+                return nil
+                finally
+                return t)
+      (e2wm:message "#REMOVED BUFFER %s" buried-buffer)
+      (e2wm:history-delete buried-buffer))
+    ;; execute plugins (e.g. to update history)
+    (when this-command
+      (e2wm:pst-update-windows))))
 
 
 ;;; code / Code editing perspective
@@ -2785,14 +2804,15 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register 
   (make-e2wm:$pst-class
-   :name   'code
-   :extend 'base
-   :title  "Coding"
-   :init   'e2wm:dp-code-init
-   :main   'main
-   :switch 'e2wm:dp-code-switch
-   :popup  'e2wm:dp-code-popup
-   :keymap 'e2wm:dp-code-minor-mode-map))
+   :name       'code
+   :extend     'base
+   :title      "Coding"
+   :init       'e2wm:dp-code-init
+   :main       'main
+   :switch     'e2wm:dp-code-switch
+   :popup      'e2wm:dp-code-popup
+   :after-bury 'e2wm:dp-code-after-bury
+   :keymap     'e2wm:dp-code-minor-mode-map))
 
 (defun e2wm:dp-code-init ()
   (let* 
@@ -2851,6 +2871,14 @@ string object to insert the imenu buffer."
         (not-minibufp (= 0 (minibuffer-depth))))
     (e2wm:with-advice
      (e2wm:pst-buffer-set 'sub buf t not-minibufp))))
+
+(defun e2wm:dp-code-after-bury (buried-buffer window)
+  "Close sub window if it is the current window."
+  (e2wm:$pst-class-super)
+  (let ((wm (e2wm:pst-get-wm)))
+    (when (eq (wlf:get-window-name wm window) 'sub)
+      (wlf:hide wm 'sub)
+      (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
 ;; Commands / Keybindings
 
@@ -2922,15 +2950,16 @@ string object to insert the imenu buffer."
 
 (e2wm:pst-class-register
   (make-e2wm:$pst-class
-   :name    'two
-   :extend  'base
-   :title   "Two Columns"
-   :init    'e2wm:dp-two-init
-   :main    'left
-   :switch  'e2wm:dp-two-switch
-   :popup   'e2wm:dp-two-popup
-   :display 'e2wm:dp-two-display
-   :keymap  'e2wm:dp-two-minor-mode-map))
+   :name       'two
+   :extend     'base
+   :title      "Two Columns"
+   :init       'e2wm:dp-two-init
+   :main       'left
+   :switch     'e2wm:dp-two-switch
+   :popup      'e2wm:dp-two-popup
+   :display    'e2wm:dp-two-display
+   :after-bury 'e2wm:dp-two-after-bury
+   :keymap     'e2wm:dp-two-minor-mode-map))
 
 (defun e2wm:dp-two-init ()
   (let* 
@@ -3020,6 +3049,14 @@ Do not select the buffer."
    (t
     (e2wm:pst-buffer-set 'sub buf t)
     t)))
+
+(defun e2wm:dp-two-after-bury (buried-buffer window)
+  "Close sub window if it is the current window."
+  (e2wm:$pst-class-super)
+  (let ((wm (e2wm:pst-get-wm)))
+    (when (eq (wlf:get-window-name wm window) 'sub)
+      (wlf:hide wm 'sub)
+      (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
 ;; Commands / Keybindings
 
