@@ -2,7 +2,11 @@ EMACS ?= emacs
 CARTON ?= carton
 ECUKES ?= $(shell find elpa/ecukes-*/ecukes | tail -1)
 
-test: ecukes-features
+test: unit-tests ecukes-features
+
+unit-tests: elpa
+	${CARTON} exec ${EMACS} -Q -batch -L . -l test-e2wm-pst-class.el \
+		-f ert-run-tests-batch-and-exit
 
 ecukes-features: elpa
 	${CARTON} exec ${ECUKES} features
