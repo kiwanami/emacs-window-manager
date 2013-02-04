@@ -1,4 +1,5 @@
 Feature: Simple window management
+  In order to have a happy Emacs life
   As a user
   I want to manage Emacs windows
 
@@ -72,7 +73,6 @@ Feature: Simple window management
     When I switch to window "left"
      And I should be in buffer "recordable-1"
 
-  @failing
   Scenario: Killing the blank buffer should not cause a problem (#42)
     Given I enabled e2wm
     When I switch to "code" perspective
