@@ -81,7 +81,6 @@ Feature: Simple window management
      And I switch to buffer "recordable"
      And I press "C-x k RET"
 
-  @failing
   Scenario: Completing window should not move focused window
     Given I enabled e2wm
     When I switch to "stwo" perspective
