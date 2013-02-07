@@ -61,7 +61,6 @@ Feature: Simple window management
     When I switch to window "right"
     Then I should be in buffer "recordable-1"
 
-  @failing
   Scenario: Do not show blank buffer when opening a file in VC (#46)
     Given I enabled e2wm
     When I switch to "stwo" perspective

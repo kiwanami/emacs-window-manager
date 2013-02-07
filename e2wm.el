@@ -1343,7 +1343,7 @@ Called via `kill-buffer-hook'."
                 (when (equal wname main-wname)
                   (e2wm:history-add buf))
                 (wlf:set-buffer wm wname buf)))
-         (main-wname 
+         ((and wins main-wname)
           (wlf:set-buffer wm main-wname (e2wm:get-blank-buffer))))))
     ;; remove it from the history list
     (e2wm:history-delete (current-buffer))
