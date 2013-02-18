@@ -140,3 +140,18 @@
        (let ((this-command 'dummy-command))
          (kill-buffer (get-buffer-create buffer-name))
          (switch-to-buffer-other-window (get-buffer-create buffer-name)))))
+
+(Then "^key-binding \"\\(.+\\)\" is undefined$"
+      (lambda (key)
+        (let ((command (key-binding (edmacro-parse-keys key))))
+          (assert (not command) nil
+                  "There should be no binding but %s was found."
+                  command))))
+
+(Then "^\"\\(.+\\)\" should be called when I type \"\\(.+\\)\"$"
+      (lambda (command key)
+        (let ((actual (key-binding (edmacro-parse-keys key)))
+              (desired (intern command)))
+          (assert (eq actual desired) nil
+                  "Command %s was bound instead of %s."
+                  actual desired))))

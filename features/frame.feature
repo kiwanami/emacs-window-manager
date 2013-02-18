@@ -12,6 +12,16 @@ Feature: Multiple frame support
      Then I should be in e2wm-managed frame
       And I should be in perspective "code"
 
+  Scenario: Frame local keymap
+    Given I enabled e2wm
+     Then "e2wm:stop-management" should be called when I type "C-c ; Q"
+     When I press "C-x 5 2"
+     Then I should not be in e2wm-managed frame
+      And key-binding "C-c ;" is undefined
+     When I press "C-x 5 o"
+     Then I should be in e2wm-managed frame
+      And "e2wm:stop-management" should be called when I type "C-c ; Q"
+
   Scenario: Frame/perspective local keymap
     Given I enabled e2wm
      When I switch to "two" perspective
