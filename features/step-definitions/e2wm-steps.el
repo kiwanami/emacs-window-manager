@@ -14,6 +14,14 @@
                   "I have frame-local e2wm:pst instance: %S."
                   pst))))
 
+(Then "^I should\\( not\\|\\) be in perspective \"\\(.+\\)\"$"
+      (lambda (not desired)
+        (let ((not-p (equal not " not"))
+              (actual (format "%s" (e2wm:$pst-name (e2wm:pst-get-instance)))))
+          (assert (eq (not not-p) (equal actual desired)) nil
+                  "Expected%s in perspective %S but in %S."
+                  (if not-p " not" "") desired actual))))
+
 (When "^I switch to \"\\(.+\\)\" perspective$"
       (lambda (pst)
         (e2wm:pst-change (intern pst))))
