@@ -91,6 +91,11 @@
      (lambda (window-name)
        (e2wm:pst-window-select (intern window-name))))
 
+(When "^I switch to window \"\\(.+\\)\" and open buffer \"\\(.+\\)\"$"
+      (lambda (window-name buffer-name)
+        (When "I switch to window \"%s\"" window-name)
+        (And "I switch to a buffer \"%s\"" buffer-name)))
+
 (defun e2wm:testing-separate-table (rows)
   (let ((backup-p t)
         history-backup history)
