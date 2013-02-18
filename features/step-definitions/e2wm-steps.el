@@ -6,6 +6,14 @@
        (lambda ()
          (e2wm:start-management)))
 
+(Then "^I should\\( not\\|\\) be in e2wm-managed frame$"
+      (lambda (not)
+        (let ((not-p (equal not " not"))
+              (pst (e2wm:pst-get-instance)))
+          (assert (eq not-p (not pst)) nil
+                  "I have frame-local e2wm:pst instance: %S."
+                  pst))))
+
 (When "^I switch to \"\\(.+\\)\" perspective$"
       (lambda (pst)
         (e2wm:pst-change (intern pst))))
