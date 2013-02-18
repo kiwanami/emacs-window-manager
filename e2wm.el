@@ -1139,7 +1139,7 @@ defined by the perspective."
     (e2wm:pst-minor-mode-enable-frame frame))
    (t
     (e2wm:aif (previous-frame frame)
-        (e2wm:pst-minor-mode-enable-frame-keymap it))
+        (e2wm:pst-minor-mode-disable-frame-keymap it))
     (e2wm:pst-minor-mode-disable-frame frame))))
 
 (defadvice handle-switch-frame (around e2wm:ad-frame-override (event))
