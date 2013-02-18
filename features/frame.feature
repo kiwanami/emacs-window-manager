@@ -64,5 +64,7 @@ Feature: Multiple frame support
       And I switch to "two" perspective
       And I press "C-x 5 o"
      Then I should be in perspective "code"
+      And "e2wm:dp-code-imenu-toggle-command" should be called when I type "C-c ; I"
       And I press "C-x 5 o"
      Then I should be in perspective "two"
+      And "e2wm:dp-two-swap-buffers-command" should be called when I type "C-c ; -"
