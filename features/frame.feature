@@ -54,3 +54,15 @@ Feature: Multiple frame support
       And I press "C-x 5 1"
       And I disabled e2wm
      Then I should not be in e2wm-managed frame
+
+  Scenario: Different perspective on different frame
+    Given I enabled e2wm
+      And I press "C-x 5 2"
+      And I enabled e2wm
+     Then I should be in perspective "code"
+     When I press "C-x 5 o"
+      And I switch to "two" perspective
+      And I press "C-x 5 o"
+     Then I should be in perspective "code"
+      And I press "C-x 5 o"
+     Then I should be in perspective "two"
