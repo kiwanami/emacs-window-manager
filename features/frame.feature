@@ -37,3 +37,12 @@ Feature: Multiple frame support
      Then I should be in buffer "recordable-left"
      When I press "C-c ; -"
      Then I should be in buffer "recordable-right"
+
+  Scenario: Manage windows in two frames
+    Given I enabled e2wm
+     When I press "C-x 5 2"
+     Then I should not be in e2wm-managed frame
+    Given I enabled e2wm
+     Then I should be in e2wm-managed frame
+     When I press "C-x 5 o"
+     Then I should be in e2wm-managed frame
