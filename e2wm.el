@@ -1090,9 +1090,10 @@ defined by the perspective."
   (e2wm:message "## PST MM DISABLED")
   ;;グローバルマイナーモードは有効のままで、アドバイス、キーマップのみ無効にする
   ;;特定のフレームで有効というイメージ
-  (setq e2wm:pst-minor-mode-keymap-backup e2wm:pst-minor-mode-keymap)
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
-      (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))
+      (progn
+        (setq e2wm:pst-minor-mode-keymap-backup (cdr it))
+        (setf (cdr it) e2wm:pst-minor-mode-keymap-blank)))
 
   (remove-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (remove-hook 'window-configuration-change-hook 
