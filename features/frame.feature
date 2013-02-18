@@ -11,3 +11,19 @@ Feature: Multiple frame support
      When I press "C-x 5 o"
      Then I should be in e2wm-managed frame
       And I should be in perspective "code"
+
+  Scenario: Frame/perspective local keymap
+    Given I enabled e2wm
+     When I switch to "two" perspective
+      And I switch to window "left" and open buffer "recordable-left"
+      And I switch to window "right" and open buffer "recordable-right"
+     When I press "C-x 5 2"
+     Then I should not be in e2wm-managed frame
+     When I press "C-x 5 o"
+     Then I should be in e2wm-managed frame
+      And I should be in perspective "two"
+      And I should be in buffer "recordable-right"
+     When I press "C-c ; -"
+     Then I should be in buffer "recordable-left"
+     When I press "C-c ; -"
+     Then I should be in buffer "recordable-right"

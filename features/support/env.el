@@ -40,6 +40,7 @@
 
 (After
  ;; After each scenario is run
+ (delete-other-frames)
  ;; Exit from e2wm management:
  (e2wm:stop-management t))
 
