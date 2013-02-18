@@ -1085,16 +1085,19 @@ defined by the perspective."
 
 (defvar e2wm:pst-minor-mode-keymap-blank (make-sparse-keymap) "[internal]")
 
+(defun e2wm:pst-minor-mode-disable-frame-keymap (&optional frame)
+  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
+      (progn
+        (e2wm:frame-param-set 'e2wm:keymap-backup (cdr it) frame)
+        (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))))
+
 (defun e2wm:pst-minor-mode-disable-frame (&optional frame)
   (e2wm:message "## PST MM DISABLED ON %s (KEYMAP BACKUP %s)"
                 frame
                 (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
   ;;グローバルマイナーモードは有効のままで、アドバイス、キーマップのみ無効にする
   ;;特定のフレームで有効というイメージ
-  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
-      (progn
-        (e2wm:frame-param-set 'e2wm:keymap-backup (cdr it) frame)
-        (setf (cdr it) e2wm:pst-minor-mode-keymap-blank)))
+  (e2wm:pst-minor-mode-disable-frame-keymap frame)
 
   (remove-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (remove-hook 'window-configuration-change-hook 
@@ -1106,13 +1109,16 @@ defined by the perspective."
   (ad-deactivate-regexp "^e2wm:ad-override$")
   )
 
+(defun e2wm:pst-minor-mode-enable-frame-keymap (&optional frame)
+  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
+      (setf (cdr it) (e2wm:frame-param-get 'e2wm:keymap-backup frame)))
+  (e2wm:frame-param-set 'e2wm:keymap-backup nil frame))
+
 (defun e2wm:pst-minor-mode-enable-frame (&optional frame)
   (e2wm:message "## PST MM ENABLED ON %s (KEYMAP BACKUP %s)"
                 frame
                 (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
-  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
-      (setf (cdr it) (e2wm:frame-param-get 'e2wm:keymap-backup frame)))
-  (e2wm:frame-param-set 'e2wm:keymap-backup nil frame)
+  (e2wm:pst-minor-mode-enable-frame-keymap frame)
 
   (ad-activate-regexp "^e2wm:ad-override" t)
   (add-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
@@ -1129,11 +1135,11 @@ defined by the perspective."
   (cond
    ((e2wm:managed-p frame)
     (e2wm:aif (previous-frame frame)
-        (e2wm:pst-minor-mode-disable-frame it))
+        (e2wm:pst-minor-mode-disable-frame-keymap it))
     (e2wm:pst-minor-mode-enable-frame frame))
    (t
     (e2wm:aif (previous-frame frame)
-        (e2wm:pst-minor-mode-enable-frame it))
+        (e2wm:pst-minor-mode-enable-frame-keymap it))
     (e2wm:pst-minor-mode-disable-frame frame))))
 
 (defadvice handle-switch-frame (around e2wm:ad-frame-override (event))
