@@ -1086,6 +1086,9 @@ defined by the perspective."
 (defvar e2wm:pst-minor-mode-keymap-blank (make-sparse-keymap) "[internal]")
 
 (defun e2wm:pst-minor-mode-backup-frame-keymap (&optional frame)
+  (e2wm:message "## PST BACKUP KEYMAP ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
       (progn
         (e2wm:frame-param-set 'e2wm:keymap-backup (cdr it) frame)
@@ -1110,6 +1113,9 @@ defined by the perspective."
   )
 
 (defun e2wm:pst-minor-mode-restore-frame-keymap (&optional frame)
+  (e2wm:message "## PST RESTORE KEYMAP ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
       (setf (cdr it) (e2wm:frame-param-get 'e2wm:keymap-backup frame)))
   (e2wm:frame-param-set 'e2wm:keymap-backup nil frame))
