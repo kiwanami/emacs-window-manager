@@ -6,6 +6,10 @@
        (lambda ()
          (e2wm:start-management)))
 
+(Given "^I disabled e2wm$"
+       (lambda ()
+         (e2wm:stop-management)))
+
 (Then "^I should\\( not\\|\\) be in e2wm-managed frame$"
       (lambda (not)
         (let ((not-p (equal not " not"))

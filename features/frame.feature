@@ -46,3 +46,10 @@ Feature: Multiple frame support
      Then I should be in e2wm-managed frame
      When I press "C-x 5 o"
      Then I should be in e2wm-managed frame
+
+  Scenario: Stopping window management of already dead frame
+    Given I enabled e2wm
+     When I press "C-x 5 2"
+      And I press "C-x 5 1"
+      And I disabled e2wm
+     Then I should not be in e2wm-managed frame
