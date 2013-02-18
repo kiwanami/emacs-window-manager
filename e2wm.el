@@ -3845,6 +3845,14 @@ Do not select the buffer."
 (defvar e2wm:pre-start-hook nil "")
 (defvar e2wm:post-start-hook nil "")
 
+(defun e2wm:initialize-for-frame (pstset)
+  (if pstset
+      (e2wm:pstset-define pstset)
+    (e2wm:pstset-defaults)) ; use all registered perspectives
+  (e2wm:pst-set-prev-pst nil)
+    ;; show the first perspective in the perspective set
+  (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))))
+
 (defun e2wm:start-management (&optional pstset force-restart)
   "e2wm window management for the current frame.
 
@@ -3858,7 +3866,13 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
 
   (cond
    (e2wm:pst-minor-mode
-    (message "E2wm has already started."))
+    (if (e2wm:pst-get-instance)
+        (message "E2wm has already started.")
+      (e2wm:frame-param-set
+       'e2wm-save-window-configuration
+       (current-window-configuration))
+      (e2wm:pst-minor-mode-enable-frame)
+      (e2wm:initialize-for-frame pstset)))
    (t
     (run-hooks 'e2wm:pre-start-hook)
 
@@ -3872,12 +3886,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
     (e2wm:pst-minor-mode 1)
     (ad-activate-regexp "^e2wm:ad-debug" t) ; debug
 
-    (if pstset
-        (e2wm:pstset-define pstset)
-      (e2wm:pstset-defaults)) ; use all registered perspectives
-    (e2wm:pst-set-prev-pst nil)
-    ;; show the first perspective in the perspective set
-    (e2wm:pst-change (car (e2wm:pstset-get-current-pstset)))
+    (e2wm:initialize-for-frame pstset)
     (e2wm:menu-define)
 
     (run-hooks 'e2wm:post-start-hook)
