@@ -1259,6 +1259,24 @@ defined by the perspective."
           (setq ad-return-value (get-buffer-create buf)))
       ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
 
+(defadvice pop-to-buffer-same-window (around
+                                      e2wm:ad-override
+                                      (buf &optional norecord))
+  (e2wm:message "#POP-TO-BUFFER-SAME-WINDOW %s" buf)
+  (let (overrided)
+    (when (and buf
+               (not e2wm:ad-now-overriding) ; 再入してなくて
+               (e2wm:managed-p)) ; 管理対象フレームの場合は乗っ取る
+      (e2wm:with-advice
+       (e2wm:message "#AD-SWITCH-TO-BUFFER %s" buf)
+       (e2wm:history-add buf)
+       (setq overrided (e2wm:pst-switch-to-buffer (get-buffer-create buf)))))
+    (if overrided
+        (progn
+          (set-buffer buf)
+          (setq ad-return-value (get-buffer-create buf)))
+      ad-do-it))) ; それ以外はもとの関数へ（画面更新はしないので必要な場合は自分でする）
+
 (defun e2wm:after-bury-buffer (buried-buffer window)
   "[internal] This function is called after `bury-buffer' or
 `quit-window' call, resets the buffer tracked by e2wm and
