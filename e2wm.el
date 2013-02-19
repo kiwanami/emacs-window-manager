@@ -226,19 +226,17 @@ equals to NAME in the given sequence SEQ."
 
 ;; debug
 
-(eval-and-compile
-  (defvar e2wm:debug nil "Debug output switch.")) ; debug
+(defvar e2wm:debug nil "Debug output switch.")
 (defvar e2wm:debug-count 0 "[internal] Debug output counter.") ; debug
 
-(defmacro e2wm:message (&rest args) ; debug
+(defun e2wm:message (&rest args)
   "Output a message into the debug buffer: *e2wm:debug*."
   (when e2wm:debug
-    `(progn 
-       (with-current-buffer (get-buffer-create "*e2wm:debug*")
-         (save-excursion
-           (goto-char (point-max))
-           (insert (format "%5i %s\n" e2wm:debug-count (format ,@args)))))
-       (incf e2wm:debug-count))))
+    (with-current-buffer (get-buffer-create "*e2wm:debug*")
+      (save-excursion
+        (goto-char (point-max))
+        (insert (format "%5i %s\n" e2wm:debug-count (apply #'format args)))))
+    (incf e2wm:debug-count)))
 
 (defun e2wm:message-mark () ; debug
   "Output a mark text into the debug buffer: *e2wm:debug*."
