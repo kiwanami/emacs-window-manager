@@ -6,6 +6,26 @@
        (lambda ()
          (e2wm:start-management)))
 
+(Given "^I disabled e2wm$"
+       (lambda ()
+         (e2wm:stop-management)))
+
+(Then "^I should\\( not\\|\\) be in e2wm-managed frame$"
+      (lambda (not)
+        (let ((not-p (equal not " not"))
+              (pst (e2wm:pst-get-instance)))
+          (assert (eq not-p (not pst)) nil
+                  "I have frame-local e2wm:pst instance: %S."
+                  pst))))
+
+(Then "^I should\\( not\\|\\) be in perspective \"\\(.+\\)\"$"
+      (lambda (not desired)
+        (let ((not-p (equal not " not"))
+              (actual (format "%s" (e2wm:$pst-name (e2wm:pst-get-instance)))))
+          (assert (eq (not not-p) (equal actual desired)) nil
+                  "Expected%s in perspective %S but in %S."
+                  (if not-p " not" "") desired actual))))
+
 (When "^I switch to \"\\(.+\\)\" perspective$"
       (lambda (pst)
         (e2wm:pst-change (intern pst))))
@@ -75,6 +95,11 @@
      (lambda (window-name)
        (e2wm:pst-window-select (intern window-name))))
 
+(When "^I switch to window \"\\(.+\\)\" and open buffer \"\\(.+\\)\"$"
+      (lambda (window-name buffer-name)
+        (When "I switch to window \"%s\"" window-name)
+        (And "I switch to a buffer \"%s\"" buffer-name)))
+
 (defun e2wm:testing-separate-table (rows)
   (let ((backup-p t)
         history-backup history)
@@ -119,3 +144,18 @@
        (let ((this-command 'dummy-command))
          (kill-buffer (get-buffer-create buffer-name))
          (switch-to-buffer-other-window (get-buffer-create buffer-name)))))
+
+(Then "^key-binding \"\\(.+\\)\" is undefined$"
+      (lambda (key)
+        (let ((command (key-binding (edmacro-parse-keys key))))
+          (assert (not command) nil
+                  "There should be no binding but %s was found."
+                  command))))
+
+(Then "^\"\\(.+\\)\" should be called when I type \"\\(.+\\)\"$"
+      (lambda (command key)
+        (let ((actual (key-binding (edmacro-parse-keys key)))
+              (desired (intern command)))
+          (assert (eq actual desired) nil
+                  "Command %s was bound instead of %s."
+                  actual desired))))

@@ -44,7 +44,11 @@
 (After
  ;; After each scenario is run
  ;; Exit from e2wm management:
- (e2wm:stop-management t))
+ (e2wm:stop-management t)
+ ;; Stopping management when e2wm has live frame kills Emacs.  This is
+ ;; another bug needed to be solved, but let's play on the safer side
+ ;; now:
+ (delete-other-frames))
 
 (Teardown
  ;; After when everything has been run

@@ -1,6 +1,7 @@
 EMACS ?= emacs
 CARTON ?= carton
 ECUKES ?= $(shell find elpa/ecukes-*/ecukes | tail -1)
+ECUKES_OPTS ?= --tags ~@known
 
 test: unit-tests ecukes-features
 
@@ -9,7 +10,7 @@ unit-tests: elpa
 		-f ert-run-tests-batch-and-exit
 
 ecukes-features: elpa
-	${CARTON} exec ${ECUKES} features
+	${CARTON} exec ${ECUKES} ${ECUKES_OPTS} features
 
 elpa:
 	mkdir -p elpa
