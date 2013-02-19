@@ -1081,16 +1081,24 @@ defined by the perspective."
 
 ;;管理対象frameだけキーマップを有効にするアドバイス
 
-(defvar e2wm:pst-minor-mode-keymap-backup nil "[internal]")
 (defvar e2wm:pst-minor-mode-keymap-blank (make-sparse-keymap) "[internal]")
 
-(defun e2wm:pst-minor-mode-disable-frame ()
-  (e2wm:message "## PST MM DISABLED")
+(defun e2wm:pst-minor-mode-backup-frame-keymap (&optional frame)
+  (e2wm:message "## PST BACKUP KEYMAP ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
+  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
+      (progn
+        (e2wm:frame-param-set 'e2wm:keymap-backup (cdr it) frame)
+        (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))))
+
+(defun e2wm:pst-minor-mode-disable-frame (&optional frame)
+  (e2wm:message "## PST MM DISABLED ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
   ;;グローバルマイナーモードは有効のままで、アドバイス、キーマップのみ無効にする
   ;;特定のフレームで有効というイメージ
-  (setq e2wm:pst-minor-mode-keymap-backup e2wm:pst-minor-mode-keymap)
-  (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
-      (setf (cdr it) e2wm:pst-minor-mode-keymap-blank))
+  (e2wm:pst-minor-mode-backup-frame-keymap frame)
 
   (remove-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
   (remove-hook 'window-configuration-change-hook 
@@ -1102,11 +1110,19 @@ defined by the perspective."
   (ad-deactivate-regexp "^e2wm:ad-override$")
   )
 
-(defun e2wm:pst-minor-mode-enable-frame ()
-  (e2wm:message "## PST MM ENABLED")
+(defun e2wm:pst-minor-mode-restore-frame-keymap (&optional frame)
+  (e2wm:message "## PST RESTORE KEYMAP ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
   (e2wm:aif (assq 'e2wm:pst-minor-mode minor-mode-map-alist)
-      (setf (cdr it) e2wm:pst-minor-mode-keymap-backup))
-  (setq e2wm:pst-minor-mode-keymap-backup nil)
+      (setf (cdr it) (e2wm:frame-param-get 'e2wm:keymap-backup frame)))
+  (e2wm:frame-param-set 'e2wm:keymap-backup nil frame))
+
+(defun e2wm:pst-minor-mode-enable-frame (&optional frame)
+  (e2wm:message "## PST MM ENABLED ON %s (KEYMAP BACKUP %s)"
+                frame
+                (not (null (e2wm:frame-param-get 'e2wm:keymap-backup frame))))
+  (e2wm:pst-minor-mode-restore-frame-keymap frame)
 
   (ad-activate-regexp "^e2wm:ad-override" t)
   (add-hook 'kill-buffer-hook 'e2wm:kill-buffer-hook)
@@ -1118,12 +1134,17 @@ defined by the perspective."
   (setq display-buffer-function 'e2wm:override-special-display-function))
 
 (defun e2wm:pst-minor-mode-switch-frame (frame)
-  (e2wm:message "## PST MM SWITCH [%s] / %s" (e2wm:managed-p frame) frame)
+  (e2wm:message "## PST MM SWITCH [%s] / %s"
+                (not (null (e2wm:managed-p frame))) frame)
   (cond
    ((e2wm:managed-p frame)
-    (e2wm:pst-minor-mode-enable-frame))
+    (e2wm:aif (previous-frame frame)
+        (e2wm:pst-minor-mode-backup-frame-keymap it))
+    (e2wm:pst-minor-mode-enable-frame frame))
    (t
-    (e2wm:pst-minor-mode-disable-frame))))
+    (e2wm:aif (previous-frame frame)
+        (e2wm:pst-minor-mode-backup-frame-keymap it))
+    (e2wm:pst-minor-mode-disable-frame frame))))
 
 (defadvice handle-switch-frame (around e2wm:ad-frame-override (event))
   ad-do-it
@@ -3842,6 +3863,14 @@ Do not select the buffer."
 (defvar e2wm:pre-start-hook nil "")
 (defvar e2wm:post-start-hook nil "")
 
+(defun e2wm:initialize-for-frame (pstset)
+  (if pstset
+      (e2wm:pstset-define pstset)
+    (e2wm:pstset-defaults)) ; use all registered perspectives
+  (e2wm:pst-set-prev-pst nil)
+    ;; show the first perspective in the perspective set
+  (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))))
+
 (defun e2wm:start-management (&optional pstset force-restart)
   "e2wm window management for the current frame.
 
@@ -3855,7 +3884,13 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
 
   (cond
    (e2wm:pst-minor-mode
-    (message "E2wm has already started."))
+    (if (e2wm:pst-get-instance)
+        (message "E2wm has already started.")
+      (e2wm:frame-param-set
+       'e2wm-save-window-configuration
+       (current-window-configuration))
+      (e2wm:pst-minor-mode-enable-frame)
+      (e2wm:initialize-for-frame pstset)))
    (t
     (run-hooks 'e2wm:pre-start-hook)
 
@@ -3869,12 +3904,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
     (e2wm:pst-minor-mode 1)
     (ad-activate-regexp "^e2wm:ad-debug" t) ; debug
 
-    (if pstset
-        (e2wm:pstset-define pstset)
-      (e2wm:pstset-defaults)) ; use all registered perspectives
-    (e2wm:pst-set-prev-pst nil)
-    ;; show the first perspective in the perspective set
-    (e2wm:pst-change (car (e2wm:pstset-get-current-pstset)))
+    (e2wm:initialize-for-frame pstset)
     (e2wm:menu-define)
 
     (run-hooks 'e2wm:post-start-hook)
