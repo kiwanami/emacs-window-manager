@@ -19,9 +19,12 @@
 (require 'espuds)
 (require 'ert)
 
+(defvar e2wm:message-orig (symbol-function 'e2wm:message))
+(defalias 'e2wm:message 'message)
 
 (Setup
  ;; Before anything has run
+ (setq e2wm:debug t)
  (setq e2wm:c-recordable-buffer-p
        (lambda (buf)
          (e2wm:aand (buffer-name buf)
@@ -45,4 +48,4 @@
 
 (Teardown
  ;; After when everything has been run
- )
+ (fset 'e2wm:message e2wm:message-orig))
