@@ -115,3 +115,18 @@ Feature: Multiple frame support
      Then my custom display-buffer-function should be enabled
      When I press "C-x 5 o"
      Then my custom display-buffer-function should not be enabled
+
+  Scenario: Forcefully disable multiple frames
+    Given I enabled e2wm
+      And I press "C-x 5 2"
+      And I enabled e2wm
+      And I press "C-x 5 2"
+      And I enabled e2wm
+     Then "e2wm:pst-minor-mode" is on
+     When I disabled e2wm forcefully
+     Then "e2wm:pst-minor-mode" is off
+     Then I should not be in e2wm-managed frame
+     When I press "C-x 5 0"
+     Then I should not be in e2wm-managed frame
+     When I press "C-x 5 0"
+     Then I should not be in e2wm-managed frame
