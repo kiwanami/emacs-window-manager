@@ -89,3 +89,10 @@ Feature: Simple window management
      And I quit
     Then I should not see window "sub"
     Then I should be in window "right"
+
+  Scenario: Original display-buffer-function should be restored
+    Given I have custom display-buffer-function
+      And I enabled e2wm
+     Then my custom display-buffer-function should not be enabled
+     When I disabled e2wm
+     Then my custom display-buffer-function should be enabled
