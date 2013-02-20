@@ -1144,7 +1144,9 @@ defined by the perspective."
 
 (defun e2wm:delete-frame-functions (frame)
   (e2wm:message "## DELETE FRAME HOOK [%s] " frame)
-  (let* ((next-frame (car (filtered-frame-list #'e2wm:managed-p))))
+  (let* ((next-frame (car (filtered-frame-list
+                           (lambda (f)
+                             (and (not (eq f frame)) (e2wm:managed-p f)))))))
     (when next-frame
       (e2wm:message "## NEXT FRAME [%s] -> (%s)" frame next-frame)
       (e2wm:pst-minor-mode-switch-frame next-frame)
