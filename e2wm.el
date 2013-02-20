@@ -3921,15 +3921,17 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
   (setq force-stop (or current-prefix-arg force-stop))
   (when (or force-stop (e2wm:managed-p))
     (e2wm:pst-finish)
-    (e2wm:pst-minor-mode -1)
-    (e2wm:pst-set-prev-pst nil)
+    (if (e2wm:other-managed-frames (selected-frame))
+        (e2wm:pst-minor-mode-disable-frame)
+      (e2wm:pst-minor-mode -1)
+      (e2wm:pst-set-prev-pst nil)
 
-    (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
+      (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
 
-    (e2wm:aif (e2wm:frame-param-get
-               'e2wm-save-window-configuration)
-        (set-window-configuration it))
-    (run-hooks 'e2wm:post-stop-hook))
+      (e2wm:aif (e2wm:frame-param-get
+                 'e2wm-save-window-configuration)
+          (set-window-configuration it))
+      (run-hooks 'e2wm:post-stop-hook)))
   (when force-stop
     (message "E2wm is stopped forcefully.")))
 
