@@ -1142,11 +1142,14 @@ defined by the perspective."
     (select-frame next-frame))
   ad-do-it)
 
+(defun e2wm:other-managed-frames (frame)
+  "[internal] Get a list of manged frames other than FRAME."
+  (filtered-frame-list (lambda (f) (and (not (eq f frame))
+                                        (e2wm:managed-p f)))))
+
 (defun e2wm:delete-frame-functions (frame)
   (e2wm:message "## DELETE FRAME HOOK [%s] " frame)
-  (let* ((next-frame (car (filtered-frame-list
-                           (lambda (f)
-                             (and (not (eq f frame)) (e2wm:managed-p f)))))))
+  (let* ((next-frame (car (e2wm:other-managed-frames frame))))
     (when next-frame
       (e2wm:message "## NEXT FRAME [%s] -> (%s)" frame next-frame)
       (e2wm:pst-minor-mode-switch-frame next-frame)
