@@ -3924,7 +3924,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
   (setq force-stop (or current-prefix-arg force-stop))
   (when (or force-stop (e2wm:managed-p))
     (e2wm:pst-finish)
-    (if (e2wm:other-managed-frames (selected-frame))
+    (if (and (not force-stop) (e2wm:other-managed-frames (selected-frame)))
         (e2wm:pst-minor-mode-disable-frame)
       (e2wm:pst-minor-mode -1)
       (e2wm:pst-set-prev-pst nil)
