@@ -159,3 +159,21 @@
           (assert (eq actual desired) nil
                   "Command %s was bound instead of %s."
                   actual desired))))
+
+(defun e2wm:testing-dummy-display-buffer (buffer &optional action)
+  "Just call plain `display-buffer'"
+  (let (display-buffer-function)
+    (display-buffer buffer action)))
+
+(Given "^I have custom display-buffer-function$"
+       (lambda ()
+         (setq display-buffer-function 'e2wm:testing-dummy-display-buffer)))
+
+(Then "^my custom display-buffer-function should\\( not\\|\\) be enabled$"
+      (lambda (not)
+        (let* ((not-p (equal not " not"))
+               (customized (eq display-buffer-function
+                               'e2wm:testing-dummy-display-buffer)))
+          (assert (equal (not not-p) customized) nil
+                  "display-buffer-function is %S"
+                  display-buffer-function))))

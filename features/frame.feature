@@ -106,3 +106,12 @@ Feature: Multiple frame support
      When I press "C-x 5 o"
      Then I should not be in e2wm-managed frame
       And key-binding "C-c ;" is undefined
+
+  Scenario: Original display-buffer-function should be used in unmanaged frame
+    Given I have custom display-buffer-function
+      And I enabled e2wm
+     Then my custom display-buffer-function should not be enabled
+     When I press "C-x 5 2"
+     Then my custom display-buffer-function should be enabled
+     When I press "C-x 5 o"
+     Then my custom display-buffer-function should not be enabled
