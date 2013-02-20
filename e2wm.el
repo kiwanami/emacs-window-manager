@@ -777,8 +777,8 @@ See `e2wm:method-call' for implementation."
 
 (defun e2wm:pst-get-instance (&optional frame)
   (e2wm:frame-param-get 'e2wm:pst frame))
-(defun e2wm:pst-set-instance (pst-instance)
-  (e2wm:frame-param-set 'e2wm:pst pst-instance))
+(defun e2wm:pst-set-instance (pst-instance &optional frame)
+  (e2wm:frame-param-set 'e2wm:pst pst-instance frame))
 
 (defun e2wm:pst-get-prev-pst ()
   (e2wm:frame-param-get 'e2wm:prev-pst))
@@ -912,16 +912,16 @@ are created."
   (e2wm:pst-change-keymap (e2wm:$pst-keymap pst-instance))
   (e2wm:pst-method-call e2wm:$pst-class-start pst-instance (e2wm:$pst-wm pst-instance)))
 
-(defun e2wm:pst-finish ()
+(defun e2wm:pst-finish (&optional frame)
   "[internal] Suspend the current perspective for finishing e2wm or
 switching the window configuration to the non-e2wm frame during
 the other application calling `set-window-configuration'."
   (e2wm:message "#PST-FINISH")
-  (let ((prev-pst-instance (e2wm:pst-get-instance)))
+  (let ((prev-pst-instance (e2wm:pst-get-instance frame)))
     (when prev-pst-instance
       (e2wm:pst-method-call e2wm:$pst-class-leave prev-pst-instance 
                            (e2wm:$pst-wm prev-pst-instance)))
-    (e2wm:pst-set-instance nil)))
+    (e2wm:pst-set-instance nil frame)))
 
 (defun e2wm:pst-window-option-get (wm window-name)
   "Return a plist of the plug-in option at the WINDOW-NAME window."
@@ -1045,6 +1045,8 @@ defined by the perspective."
 (defvar e2wm:pst-minor-mode-setup-hook nil "This hook is called at end of setting up pst-minor-mode.")
 (defvar e2wm:pst-minor-mode-abort-hook nil "This hook is called at end of aborting pst-minor-mode.")
 
+(defvar e2wm:display-buffer-function-orig nil
+  "[internal] The value of `display-buffer-function' when E2WM is enabled.")
 (defvar e2wm:pst-minor-mode nil) ; dummy
 
 ;;グローバルでマイナーモードを定義
@@ -1059,6 +1061,7 @@ defined by the perspective."
   :group 'e2wm:pst-mode
   (if e2wm:pst-minor-mode
       (progn
+        (setq e2wm:display-buffer-function-orig display-buffer-function)
         (e2wm:pst-minor-mode-setup)
         (add-hook 'delete-frame-functions 'e2wm:delete-frame-functions)
         (run-hooks 'e2wm:pst-minor-mode-setup-hook))
@@ -1096,7 +1099,7 @@ defined by the perspective."
   (remove-hook 'completion-setup-hook 'e2wm:override-setup-completion)
   (remove-hook 'after-save-hook 'e2wm:pst-after-save-hook)
   (remove-hook 'next-error-hook 'e2wm:select-window-point)
-  (setq display-buffer-function nil)
+  (setq display-buffer-function e2wm:display-buffer-function-orig)
   (ad-deactivate-regexp "^e2wm:ad-override$")
   )
 
@@ -1142,9 +1145,14 @@ defined by the perspective."
     (select-frame next-frame))
   ad-do-it)
 
+(defun e2wm:other-managed-frames (frame)
+  "[internal] Get a list of manged frames other than FRAME."
+  (filtered-frame-list (lambda (f) (and (not (eq f frame))
+                                        (e2wm:managed-p f)))))
+
 (defun e2wm:delete-frame-functions (frame)
   (e2wm:message "## DELETE FRAME HOOK [%s] " frame)
-  (let* ((next-frame (car (filtered-frame-list #'e2wm:managed-p))))
+  (let* ((next-frame (car (e2wm:other-managed-frames frame))))
     (when next-frame
       (e2wm:message "## NEXT FRAME [%s] -> (%s)" frame next-frame)
       (e2wm:pst-minor-mode-switch-frame next-frame)
@@ -3916,15 +3924,22 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
   (setq force-stop (or current-prefix-arg force-stop))
   (when (or force-stop (e2wm:managed-p))
     (e2wm:pst-finish)
-    (e2wm:pst-minor-mode -1)
-    (e2wm:pst-set-prev-pst nil)
+    (let ((other-frames (e2wm:other-managed-frames (selected-frame))))
+      (if (and (not force-stop) other-frames)
+          (e2wm:pst-minor-mode-disable-frame)
+        ;; `other-frames' is non-nil when `force-stop' is `t'.
+        ;; therefore, ignore errors here:
+        (mapc (lambda (f) (ignore-errors (e2wm:pst-finish f)))
+              other-frames)
+        (e2wm:pst-minor-mode -1)
+        (e2wm:pst-set-prev-pst nil)
 
-    (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
+        (ad-deactivate-regexp "^e2wm:ad-debug") ; debug
 
-    (e2wm:aif (e2wm:frame-param-get
-               'e2wm-save-window-configuration)
-        (set-window-configuration it))
-    (run-hooks 'e2wm:post-stop-hook))
+        (e2wm:aif (e2wm:frame-param-get
+                   'e2wm-save-window-configuration)
+            (set-window-configuration it))
+        (run-hooks 'e2wm:post-stop-hook))))
   (when force-stop
     (message "E2wm is stopped forcefully.")))
 
