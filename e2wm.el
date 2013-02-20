@@ -1045,6 +1045,8 @@ defined by the perspective."
 (defvar e2wm:pst-minor-mode-setup-hook nil "This hook is called at end of setting up pst-minor-mode.")
 (defvar e2wm:pst-minor-mode-abort-hook nil "This hook is called at end of aborting pst-minor-mode.")
 
+(defvar e2wm:display-buffer-function-orig nil
+  "[internal] The value of `display-buffer-function' when E2WM is enabled.")
 (defvar e2wm:pst-minor-mode nil) ; dummy
 
 ;;グローバルでマイナーモードを定義
@@ -1059,6 +1061,7 @@ defined by the perspective."
   :group 'e2wm:pst-mode
   (if e2wm:pst-minor-mode
       (progn
+        (setq e2wm:display-buffer-function-orig display-buffer-function)
         (e2wm:pst-minor-mode-setup)
         (add-hook 'delete-frame-functions 'e2wm:delete-frame-functions)
         (run-hooks 'e2wm:pst-minor-mode-setup-hook))
@@ -1096,7 +1099,7 @@ defined by the perspective."
   (remove-hook 'completion-setup-hook 'e2wm:override-setup-completion)
   (remove-hook 'after-save-hook 'e2wm:pst-after-save-hook)
   (remove-hook 'next-error-hook 'e2wm:select-window-point)
-  (setq display-buffer-function nil)
+  (setq display-buffer-function e2wm:display-buffer-function-orig)
   (ad-deactivate-regexp "^e2wm:ad-override$")
   )
 
