@@ -77,3 +77,32 @@ Feature: Multiple frame support
      When I press "C-x 5 o"
      Then I should be in e2wm-managed frame
       And "e2wm:dp-code-imenu-toggle-command" should be called when I type "C-c ; I"
+
+  Scenario: Stop all managed frames
+    Given I enabled e2wm
+      And I press "C-x 5 2"
+      And I enabled e2wm
+     When I disabled e2wm
+      And I press "C-x 5 o"
+      And I disabled e2wm
+     Then I should not be in e2wm-managed frame
+      And key-binding "C-c ;" is undefined
+      And I press "C-x 5 o"
+      And I should not be in e2wm-managed frame
+      And key-binding "C-c ;" is undefined
+
+  Scenario: Restart one of managed frame
+    Given I enabled e2wm
+      And I press "C-x 5 2"
+      And I enabled e2wm
+      And I press "C-x 5 o"
+      And I disabled e2wm
+      And I press "C-x 5 o"
+      And I disabled e2wm
+      And I press "C-x 5 o"
+      And I enabled e2wm
+     Then I should be in e2wm-managed frame
+      And "e2wm:dp-code-imenu-toggle-command" should be called when I type "C-c ; I"
+     When I press "C-x 5 o"
+     Then I should not be in e2wm-managed frame
+      And key-binding "C-c ;" is undefined
