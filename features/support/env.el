@@ -48,7 +48,8 @@
  ;; Stopping management when e2wm has live frame kills Emacs.  This is
  ;; another bug needed to be solved, but let's play on the safer side
  ;; now:
- (delete-other-frames))
+ (delete-other-frames)
+ (setq display-buffer-function nil))
 
 (Teardown
  ;; After when everything has been run

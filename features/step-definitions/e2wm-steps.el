@@ -2,13 +2,13 @@
 ;; files in this directory whose names end with "-steps.el" will be
 ;; loaded automatically by Ecukes.
 
-(Given "^I enabled e2wm$"
-       (lambda ()
-         (e2wm:start-management)))
+(Given "^I enabled e2wm\\( forcefully\\|\\)$"
+       (lambda (forcefully)
+         (e2wm:start-management (equal " forcefully" forcefully))))
 
-(Given "^I disabled e2wm$"
-       (lambda ()
-         (e2wm:stop-management)))
+(Given "^I disabled e2wm\\( forcefully\\|\\)$"
+       (lambda (forcefully)
+         (e2wm:stop-management (equal " forcefully" forcefully))))
 
 (Then "^I should\\( not\\|\\) be in e2wm-managed frame$"
       (lambda (not)
@@ -17,6 +17,12 @@
           (assert (eq not-p (not pst)) nil
                   "I have frame-local e2wm:pst instance: %S."
                   pst))))
+
+(Then "^\"\\(.+\\)\" is \\(on\\|off\\)$"
+      (lambda (mode-str on)
+        (let ((mode-val (eval (intern mode-str)))
+              (on-p (equal on "on")))
+          (assert (eq on-p mode-val) nil "%s is %S." mode-str mode-val))))
 
 (Then "^I should\\( not\\|\\) be in perspective \"\\(.+\\)\"$"
       (lambda (not desired)
@@ -159,3 +165,21 @@
           (assert (eq actual desired) nil
                   "Command %s was bound instead of %s."
                   actual desired))))
+
+(defun e2wm:testing-dummy-display-buffer (buffer &optional action)
+  "Just call plain `display-buffer'"
+  (let (display-buffer-function)
+    (display-buffer buffer action)))
+
+(Given "^I have custom display-buffer-function$"
+       (lambda ()
+         (setq display-buffer-function 'e2wm:testing-dummy-display-buffer)))
+
+(Then "^my custom display-buffer-function should\\( not\\|\\) be enabled$"
+      (lambda (not)
+        (let* ((not-p (equal not " not"))
+               (customized (eq display-buffer-function
+                               'e2wm:testing-dummy-display-buffer)))
+          (assert (equal (not not-p) customized) nil
+                  "display-buffer-function is %S"
+                  display-buffer-function))))
