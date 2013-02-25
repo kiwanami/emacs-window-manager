@@ -100,7 +100,6 @@ Feature: Simple window management
   Scenario: Display method should work even windows were distorted (#58)
     Given I enabled e2wm
       And I switch to "code" perspective
-      # To distort windows,
-      And I press "C-x +"
+      And windows are distorted due to manual rearrangement
      When I display buffer "*test*"
      Then I should be in window "sub"
