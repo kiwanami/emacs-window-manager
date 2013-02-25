@@ -97,6 +97,10 @@
      (lambda (buffer-name)
        (switch-to-buffer (get-buffer-create buffer-name))))
 
+(When "^I display buffer \"\\(.+\\)\"$"
+  (lambda (buffer-name)
+    (display-buffer (get-buffer-create buffer-name))))
+
 (And "^I switch to window \"\\(.+\\)\"$"
      (lambda (window-name)
        (e2wm:pst-window-select (intern window-name))))
