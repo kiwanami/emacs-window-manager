@@ -1324,10 +1324,8 @@ removes the buried buffer from the history list."
       (e2wm:with-advice
        (e2wm:message "#AD-SPECIAL-DISPLAY-FUNC %s" buf)
        (e2wm:history-add buf)
-       (save-selected-window
-         (save-excursion
-           (setq overrided
-                 (e2wm:pst-display-buffer (get-buffer-create buf)))))))
+       (save-excursion
+         (setq overrided (e2wm:pst-display-buffer (get-buffer-create buf))))))
     (if overrided
         (progn 
           ;(set-buffer buf)
