@@ -97,6 +97,10 @@
      (lambda (buffer-name)
        (switch-to-buffer (get-buffer-create buffer-name))))
 
+(When "^I display buffer \"\\(.+\\)\"$"
+  (lambda (buffer-name)
+    (display-buffer (get-buffer-create buffer-name))))
+
 (And "^I switch to window \"\\(.+\\)\"$"
      (lambda (window-name)
        (e2wm:pst-window-select (intern window-name))))
@@ -105,6 +109,11 @@
       (lambda (window-name buffer-name)
         (When "I switch to window \"%s\"" window-name)
         (And "I switch to a buffer \"%s\"" buffer-name)))
+
+(When "^windows are distorted due to manual rearrangement$"
+  "Simulate manual rearrangement of window."
+  (lambda ()
+    (When "I press \"C-x +\"")))
 
 (defun e2wm:testing-separate-table (rows)
   (let ((backup-p t)
