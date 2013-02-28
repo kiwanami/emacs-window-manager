@@ -93,10 +93,6 @@
      (lambda (buffer-name)
        (pop-to-buffer (get-buffer-create buffer-name))))
 
-(And "^I switch to a buffer \"\\(.+\\)\"$"
-     (lambda (buffer-name)
-       (switch-to-buffer (get-buffer-create buffer-name))))
-
 (When "^I display buffer \"\\(.+\\)\"$"
   (lambda (buffer-name)
     (display-buffer (get-buffer-create buffer-name))))
@@ -108,7 +104,7 @@
 (When "^I switch to window \"\\(.+\\)\" and open buffer \"\\(.+\\)\"$"
       (lambda (window-name buffer-name)
         (When "I switch to window \"%s\"" window-name)
-        (And "I switch to a buffer \"%s\"" buffer-name)))
+        (And "I switch to buffer \"%s\"" buffer-name)))
 
 (When "^windows are distorted due to manual rearrangement$"
   "Simulate manual rearrangement of window."
