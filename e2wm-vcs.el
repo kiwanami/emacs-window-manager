@@ -107,7 +107,7 @@
   (e2wm:def-plugin-vcs-with-window
    'magit-get-top-dir
    (lambda (dir topdir)
-     (magit-display-log nil))
+     (magit-log nil))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
 
 (e2wm:plugin-register 'magit-logs
