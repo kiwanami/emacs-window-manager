@@ -1,5 +1,5 @@
 EMACS ?= emacs
-CARTON ?= carton
+CARTON ?= cask
 ECUKES ?= $(shell find elpa/ecukes-*/ecukes | tail -1)
 ECUKES_OPTS ?= --tags ~@known
 
