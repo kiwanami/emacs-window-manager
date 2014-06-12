@@ -1,7 +1,7 @@
 EMACS ?= emacs
 CASK ?= cask
 ECUKES ?= $(shell find .cask/*/elpa/ecukes-*/bin/ecukes | tail -1)
-ECUKES_OPTS ?= --tags ~@known
+ECUKES_OPTS ?= --tags ~@known --no-win
 
 test: unit-tests ecukes-features
 
