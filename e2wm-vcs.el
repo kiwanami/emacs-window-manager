@@ -369,7 +369,7 @@
   (let* ((expanded-dir (expand-file-name dir))
          (svndir (member ".svn" (directory-files expanded-dir))))
     (cond
-     ((null svndir) nil)
+     (svndir expanded-dir)
      ((or 
        (string= expanded-dir "/")
        (string= expanded-dir (expand-file-name "~/"))) nil)
