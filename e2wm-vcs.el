@@ -58,15 +58,19 @@
 
 
 (defun e2wm:def-plugin-vcs-with-window (topdir-func body-func na-buffer-func)
-  (let* ((buf (e2wm:history-get-main-buffer))
+  (let* ((buf (or e2wm:prev-selected-buffer
+                  (wlf:get-buffer (e2wm:pst-get-wm)
+                                  (e2wm:$pst-main (e2wm:pst-get-instance)))
+                  (current-buffer)))
          (file (buffer-file-name buf))
-         (dir (or (and file (file-name-directory file)) default-directory))
+         (dir (or (and file (file-name-directory file))
+                  (with-current-buffer buf default-directory)))
          (topdir (and dir (funcall topdir-func dir))))
     (e2wm:with-advice
      (cond
       (topdir
        (with-selected-window (wlf:get-window wm (wlf:window-name winfo))
-         (with-current-buffer buf 
+         (with-current-buffer buf
            (funcall body-func dir topdir))
          (wlf:set-buffer wm (wlf:window-name winfo)
                          (window-buffer (selected-window)))))
