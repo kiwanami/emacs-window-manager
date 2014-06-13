@@ -392,7 +392,7 @@
        (let ((dbuf (get-buffer-create e2wm:def-plugin-svn-logs-buffer-name)))
          (with-current-buffer dbuf
            (setq buffer-read-only nil)
-           (buffer-disable-undo buf)
+           (buffer-disable-undo dbuf)
            (erase-buffer)
            (insert (with-current-buffer (get-buffer "*svn output*")
                      (buffer-string)))
