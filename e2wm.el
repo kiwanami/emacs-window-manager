@@ -3873,6 +3873,7 @@ Do not select the buffer."
     ;; show the first perspective in the perspective set
   (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))))
 
+;;;###autoload
 (defun e2wm:start-management (&optional pstset force-restart)
   "e2wm window management for the current frame.
 
