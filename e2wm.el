@@ -3794,7 +3794,10 @@ Do not select the buffer."
 (defun e2wm:dp-array-goto-prev-pst-command ()
   (interactive)
   (e2wm:not-minibuffer
-   (e2wm:pst-change-prev)))
+   (or (e2wm:pst-change-prev)
+       (let (buf (current-buffer))
+         (e2wm:stop-management)
+         (switch-to-buffer buf)))))
 (defun e2wm:dp-array-toggle-more-buffers-command ()
   (interactive)
   (e2wm:not-minibuffer
@@ -3808,7 +3811,8 @@ Do not select the buffer."
   (interactive)
   (e2wm:not-minibuffer
    (wlf:select (e2wm:pst-get-wm) 'w-1-1)
-   (e2wm:pst-change-prev)))
+   (or (e2wm:pst-change-prev)
+       (e2wm:stop-management))))
 
 (defvar e2wm:dp-array-minor-mode-map 
   (let ((keymap (make-keymap)))
