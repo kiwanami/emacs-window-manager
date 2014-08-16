@@ -848,6 +848,8 @@ are created."
 (defun e2wm:pst-change (next-pst-name)
   "Leave the current perspective and start the new perspective."
   (e2wm:message "#PST-CHANGE %s" next-pst-name)
+  (when (not (e2wm:managed-p))
+    (e2wm:start-management nil nil t))
   (let ((prev-pst-instance (e2wm:pst-get-instance))
         (next-pst-class (e2wm:pst-class-get next-pst-name))
         (e2wm:prev-selected-buffer (current-buffer))
@@ -3865,15 +3867,16 @@ Do not select the buffer."
 (defvar e2wm:pre-start-hook nil "")
 (defvar e2wm:post-start-hook nil "")
 
-(defun e2wm:initialize-for-frame (pstset)
+(defun e2wm:initialize-for-frame (pstset &optional not-pst-change)
   (if pstset
       (e2wm:pstset-define pstset)
     (e2wm:pstset-defaults)) ; use all registered perspectives
   (e2wm:pst-set-prev-pst nil)
     ;; show the first perspective in the perspective set
-  (e2wm:pst-change (car (e2wm:pstset-get-current-pstset))))
+  (when (not not-pst-change)
+    (e2wm:pst-change (car (e2wm:pstset-get-current-pstset)))))
 
-(defun e2wm:start-management (&optional pstset force-restart)
+(defun e2wm:start-management (&optional pstset force-restart not-pst-change)
   "e2wm window management for the current frame.
 
 To force restart use the universal prefix argument (C-u) or
@@ -3892,7 +3895,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
        'e2wm-save-window-configuration
        (current-window-configuration))
       (e2wm:pst-minor-mode-enable-frame)
-      (e2wm:initialize-for-frame pstset)))
+      (e2wm:initialize-for-frame pstset not-pst-change)))
    (t
     (run-hooks 'e2wm:pre-start-hook)
 
@@ -3906,7 +3909,7 @@ specify non-nil for FORCE-STOP when calling as a lisp function."
     (e2wm:pst-minor-mode 1)
     (ad-activate-regexp "^e2wm:ad-debug" t) ; debug
 
-    (e2wm:initialize-for-frame pstset)
+    (e2wm:initialize-for-frame pstset not-pst-change)
     (e2wm:menu-define)
 
     (run-hooks 'e2wm:post-start-hook)
