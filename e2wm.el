@@ -3795,7 +3795,7 @@ Do not select the buffer."
   (interactive)
   (e2wm:not-minibuffer
    (or (e2wm:pst-change-prev)
-       (let (buf (current-buffer))
+       (let ((buf (current-buffer)))
          (e2wm:stop-management)
          (switch-to-buffer buf)))))
 (defun e2wm:dp-array-toggle-more-buffers-command ()
