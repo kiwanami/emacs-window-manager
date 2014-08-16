@@ -3615,7 +3615,11 @@ Do not select the buffer."
 (defvar e2wm:dp-array-buffers-function
   'e2wm:dp-array-get-recordable-buffers) ; この関数を切り替える
 
+(defvar e2wm:dp-array-buffers-function-backup nil)
+
 (defun e2wm:dp-array-init ()
+  (when (not e2wm:dp-array-buffers-function-backup)
+    (setq e2wm:dp-array-buffers-function-backup e2wm:dp-array-buffers-function))
   (let* 
       ((array-wm (e2wm:dp-array-make-wm 
                   (funcall e2wm:dp-array-buffers-function))))
@@ -3800,9 +3804,9 @@ Do not select the buffer."
   (e2wm:not-minibuffer
    (setq e2wm:dp-array-buffers-function
          (if (eq e2wm:dp-array-buffers-function
-                 'e2wm:dp-array-get-recordable-buffers)
+                 e2wm:dp-array-buffers-function-backup)
              'e2wm:dp-array-get-more-buffers
-           'e2wm:dp-array-get-recordable-buffers))
+           e2wm:dp-array-buffers-function-backup))
    (e2wm:pst-change 'array)))
 (defun e2wm:dp-array-cancel-command ()
   (interactive)
