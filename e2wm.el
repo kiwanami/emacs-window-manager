@@ -3514,6 +3514,8 @@ Do not select the buffer."
          "\\*\\(scratch\\|Messages\\)\\*" 
          bn))))))
       
+(defvar e2wm:c-array-smart-buffers-functions nil)
+
 (defun e2wm:dp-array-make-recipe (cols rows)
   ;; cols x rows の recipe を作る
   (let* ((sz-summary 0.12)
@@ -3613,7 +3615,7 @@ Do not select the buffer."
      :leave  'e2wm:dp-array-leave))
 
 (defvar e2wm:dp-array-buffers-function
-  'e2wm:dp-array-get-recordable-buffers) ; この関数を切り替える
+  'e2wm:dp-array-get-smart-buffers) ; この関数を切り替える
 
 (defun e2wm:dp-array-init ()
   (let* 
@@ -3675,6 +3677,22 @@ Do not select the buffer."
                   (not (member b ret)))
           do (push b ret))
     (nreverse ret)))
+
+(defun e2wm:dp-array-get-smart-buffers ()
+  (loop for f in e2wm:c-array-smart-buffers-functions
+        for ret = (funcall f)
+        if ret return ret
+        finally return (e2wm:dp-array-get-recordable-buffers)))
+
+(defun e2wm:dp-array-get-same-mode-buffers ()
+  (loop with mmode = (buffer-local-value 'major-mode (current-buffer))
+        for b in (buffer-list)
+        if (eq (buffer-local-value 'major-mode b) mmode)
+        collect b))
+
+(defun e2wm:dp-array-get-same-mode-buffers-if-not-recordable ()
+  (when (not (e2wm:history-recordable-p (current-buffer)))
+    (e2wm:dp-array-get-same-mode-buffers)))
 
 (defun e2wm:dp-array-popup (buf)
   (e2wm:message "#DP ARRAY popup : %s" buf)
