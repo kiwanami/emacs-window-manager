@@ -3886,10 +3886,15 @@ Do not select the buffer."
 
 ;;;###autoload
 (defun e2wm:start-management (&optional pstset force-restart not-pst-change)
-  "e2wm window management for the current frame.
+  "Setup e2wm window management for the current frame.
 
 To force restart use the universal prefix argument (C-u) or
-specify non-nil for FORCE-STOP when calling as a lisp function."
+specify non-nil for FORCE-RESTART when calling as a lisp function.
+
+When the perspective change function `e2wm:pst-change' is called
+before executing this initialization function, this function
+would be called at `e2wm:pst-change'. Then, NOT-PST-CHANGE is not
+`nil' in order to prevent infinite looping."
   (interactive)
 
   (when (or force-restart current-prefix-arg)
