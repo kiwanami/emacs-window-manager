@@ -3518,10 +3518,11 @@ Do not select the buffer."
 
 (defvar e2wm:c-array-smart-buffers-functions nil) ; 最初にバッファのリストを返したものが有効
 
+(defvar e2wm:c-array-summary-size-ratio 0.12)
+
 (defun e2wm:dp-array-make-recipe (cols rows)
   ;; cols x rows の recipe を作る
-  (let* ((sz-summary 0.12)
-         (sz-array (- 1.0 sz-summary)))
+  (let ((sz-array (- 1.0 e2wm:c-array-summary-size-ratio)))
     (decf cols) (decf rows)
     (labels
         ((loop-rows
