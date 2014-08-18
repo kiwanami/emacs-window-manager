@@ -3446,24 +3446,84 @@ Do not select the buffer."
         (setq buffer-read-only t)))
     (wlf:set-buffer wm 'summary buf)))
 
-(defun e2wm:dp-dashboard-insert-summary-info ()
+(defun e2wm:dp-dashboard-parse-garbage-collect-1 (gc-info)
   (multiple-value-bind
       (conses syms miscs used-string-chars
               used-vector-slots floats intervals strings)
-      (garbage-collect)
-    (let* ((used-conses (car conses))
-           (free-conses (cdr conses))
-           (used-miscs (car miscs))
-           (free-miscs (cdr miscs))
-           (used-syms (car syms))
-           (free-syms (cdr syms))
-           (used-floats (car floats))
-           (free-floats (cdr floats))
-           (used-strings (car strings))
-           (free-strings (cdr strings))
+      gc-info
+    (let* ((used-conses    (car conses))
+           (free-conses    (cdr conses))
+           (used-miscs     (car miscs))
+           (free-miscs     (cdr miscs))
+           (used-syms      (car syms))
+           (free-syms      (cdr syms))
+           (used-floats    (car floats))
+           (free-floats    (cdr floats))
+           (used-strings   (car strings))
+           (free-strings   (cdr strings))
            (used-intervals (car intervals))
-           (free-intervals (cdr intervals))
-           (buf-num (length (buffer-list)))
+           (free-intervals (cdr intervals)))
+      (list used-conses    free-conses
+            used-miscs     free-miscs
+            used-syms      free-syms
+            used-floats    free-floats
+            used-strings   free-strings
+            used-intervals free-intervals
+            used-string-chars
+            used-vector-slots))))
+
+(defun e2wm:dp-dashboard-parse-garbage-collect-2 (gc-info)
+  ;; For the following Emacs in Ubuntu 12.04
+  ;; GNU Emacs 24.3.1 (i686-pc-linux-gnu, GTK+ Version 3.4.2)
+  ;; of 2014-02-22 on chindi10, modified by Debian
+  (multiple-value-bind
+      (conses syms miscs strings string-bytes
+              vectors vector-slots floats intervals)
+      gc-info
+    (let* ((used-conses       (nth 2 conses))
+           (free-conses       (nth 3 conses))
+           (used-miscs        (nth 2 miscs))
+           (free-miscs        (nth 3 miscs))
+           (used-syms         (nth 2 syms))
+           (free-syms         (nth 3 syms))
+           (used-floats       (nth 2 floats))
+           (free-floats       (nth 3 floats))
+           (used-strings      (nth 2 strings))
+           (free-strings      (nth 3 strings))
+           (used-intervals    (nth 2 intervals))
+           (free-intervals    (nth 3 intervals))
+           (used-string-chars (nth 2 string-bytes))
+           (used-vector-slots (nth 2 vector-slots)))
+      (list used-conses    free-conses
+            used-miscs     free-miscs
+            used-syms      free-syms
+            used-floats    free-floats
+            used-strings   free-strings
+            used-intervals free-intervals
+            used-string-chars
+            used-vector-slots))))
+
+(defun e2wm:dp-dashboard-parse-garbage-collect ()
+  (loop with gc-info = (garbage-collect)
+        for f in '(e2wm:dp-dashboard-parse-garbage-collect-1
+                   e2wm:dp-dashboard-parse-garbage-collect-2)
+        for ret = (funcall f gc-info)
+        if (loop for e in ret always (numberp e))
+        return ret
+        finally return '(0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+
+(defun e2wm:dp-dashboard-insert-summary-info ()
+  (multiple-value-bind
+      ( used-conses    free-conses
+        used-miscs     free-miscs
+        used-syms      free-syms
+        used-floats    free-floats
+        used-strings   free-strings
+        used-intervals free-intervals
+        used-string-chars
+        used-vector-slots )
+      (e2wm:dp-dashboard-parse-garbage-collect)
+    (let* ((buf-num (length (buffer-list)))
            (pure-mem (e2wm:format-byte-unit pure-bytes-used))
            (gccons (e2wm:format-byte-unit gc-cons-threshold))
            (mem-limit (e2wm:format-byte-unit (* 1024 (memory-limit)))))
