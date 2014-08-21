@@ -214,6 +214,7 @@
 
 ;; Commands / Keybindings
 
+;;;###autoload
 (defun e2wm:dp-magit ()
   (interactive)
   (e2wm:pst-change 'magit))
@@ -354,6 +355,7 @@
 
 ;; Commands / Keybindings
 
+;;;###autoload
 (defun e2wm:dp-monky ()
   (interactive)
   (e2wm:pst-change 'monky))
@@ -480,6 +482,7 @@
 
 ;; Commands / Keybindings
 
+;;;###autoload
 (defun e2wm:dp-svn ()
   (interactive)
   (e2wm:pst-change 'svn))
