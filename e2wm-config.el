@@ -36,7 +36,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 全体設定
 
-;; (setq e2wm:debug nil) 
+;; (setq e2wm:debug nil)
 
 ;; (setq e2wm:c-max-history-num 20)  ; 履歴の保存数
 
@@ -44,9 +44,9 @@
 ;;       (lambda (buf)
 ;;         (buffer-local-value 'buffer-file-name buf))) ; ファイル名に関連ついてるもの
 
-;; (setq e2wm:c-document-buffer-p ; 
+;; (setq e2wm:c-document-buffer-p
 ;;       (lambda (buf)
-;;         (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)" 
+;;         (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)"
 ;;                       (buffer-name buf)))) ; ドキュメント的に扱いたいバッファ
 
 ;; (setq e2wm:c-blank-buffer         ; 白紙バッファ
@@ -108,7 +108,7 @@
 ;;    "\\*\\(vc-diff\\)\\*")
 
 ;; キーバインド
-(e2wm:add-keymap 
+(e2wm:add-keymap
  e2wm:pst-minor-mode-keymap
  '(("<M-left>" . e2wm:dp-code) ; codeへ変更
    ("<M-right>"  . e2wm:dp-two)  ; twoへ変更
@@ -142,8 +142,8 @@
 ;; (setq e2wm:c-two-right-default 'left) ; left, prev
 
 ;; キーバインド
-(e2wm:add-keymap 
- e2wm:dp-two-minor-mode-map 
+(e2wm:add-keymap
+ e2wm:dp-two-minor-mode-map
  '(("prefix I" . info)
    ("C->"       . e2wm:dp-two-right-history-forward-command) ; 右側の履歴を進む
    ("C-<"       . e2wm:dp-two-right-history-back-command) ; 右側の履歴を進む
@@ -163,9 +163,9 @@
 ;;         (:name sub :default-hide t)))
 
 ;; キーバインド
-(e2wm:add-keymap 
- e2wm:dp-doc-minor-mode-map 
- '(("prefix I" . info)) 
+(e2wm:add-keymap
+ e2wm:dp-doc-minor-mode-map
+ '(("prefix I" . info))
  e2wm:prefix-key)
 
 ;;; dashboard
@@ -264,7 +264,7 @@
        ad-do-it
        (delete-window (selected-window)) ; Enterでmoccurのバッファを消す（消さない方が良ければこの行をコメント）
        (e2wm:pst-window-select-main))
-     
+
      (defadvice goto-line (around e2wm:ad-override)
        ad-do-it
        (let ((buf (or (ad-get-arg 2) (current-buffer))))
@@ -272,7 +272,7 @@
                 (e2wm:managed-p)
                 (eq (wlf:get-window (e2wm:pst-get-wm) 'sub) (selected-window))
                 (not (eql (selected-window) (get-buffer-window buf))))
-           (set-window-point 
+           (set-window-point
             (get-buffer-window buf)
             (with-current-buffer buf (point))))))
 
@@ -331,14 +331,14 @@
 ;; elscreenごとに異なる異なるe2wmインスタンスを持つ頃が出来る。
 ;; （e2wmの所々でグローバルで値を共有しているところがあるので今後直す）
 
-(eval-after-load "elscreen" 
+(eval-after-load "elscreen"
   '(progn
      ;; overrides storages for elscreen
      (defadvice e2wm:frame-param-get (around e2wm:ad-override-els (name &optional frame))
        ;; frame is not used...
        (e2wm:message "** e2wm:frame-param-get : %s " name)
        (let ((alst (cdr (assq 'e2wm-frame-prop
-                              (elscreen-get-screen-property 
+                              (elscreen-get-screen-property
                                (elscreen-get-current-screen))))))
          (setq ad-return-value (and alst (cdr (assq name alst))))))
      (defadvice e2wm:frame-param-set (around e2wm:ad-override-els (name val &optional frame))
@@ -352,7 +352,7 @@
          (setq ad-return-value val)))
      ;; grab switch events
      (defun e2wm:elscreen-define-advice (function)
-       (eval 
+       (eval
         `(defadvice ,function (around e2wm:ad-override-els)
            (e2wm:message "** %s vvvv" ',function)
            (when (e2wm:managed-p)
@@ -363,9 +363,9 @@
            (e2wm:message "** ad-do-it ->")
            ad-do-it
            (e2wm:message "** ad-do-it <-")
-           (e2wm:message "** e2wm:param %s" 
+           (e2wm:message "** e2wm:param %s"
                          (cdr (assq 'e2wm-frame-prop
-                                    (elscreen-get-screen-property 
+                                    (elscreen-get-screen-property
                                      (elscreen-get-current-screen)))))
            (when (e2wm:managed-p)
              (e2wm:message "** e2wm:managed")
@@ -392,8 +392,8 @@
          ))
 
      ;; apply defadvices to some elscreen functions
-     (loop for i in '(elscreen-goto 
-                      elscreen-kill 
+     (loop for i in '(elscreen-goto
+                      elscreen-kill
                       elscreen-clone
                       elscreen-swap)
            do (e2wm:elscreen-define-advice i))
@@ -424,7 +424,7 @@
        (ad-disable-advice 'delete-other-windows 'around 'multi-term-delete-other-window-advice))
      (defun e2wm:mult-term-advices-enable ()
        (ad-enable-advice  'delete-other-windows 'around 'multi-term-delete-other-window-advice))
-     
+
      (add-hook 'e2wm:pst-minor-mode-setup-hook 'e2wm:mult-term-advices-disable)
      (add-hook 'e2wm:pst-minor-mode-abort-hook 'e2wm:mult-term-advices-enable)
      ))

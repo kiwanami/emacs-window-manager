@@ -75,7 +75,7 @@
          (wlf:set-buffer wm (wlf:window-name winfo)
                          (window-buffer (selected-window)))))
       (t
-       (wlf:set-buffer wm (wlf:window-name winfo) 
+       (wlf:set-buffer wm (wlf:window-name winfo)
                        (funcall na-buffer-func)))))))
 
 (defvar e2wm:c-vcs-select-if-plugin nil "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
@@ -153,7 +153,7 @@
 (defvar e2wm:c-magit-show-main-regexp
    "\\*\\(vc-diff\\)\\*")
 
-(e2wm:pst-class-register 
+(e2wm:pst-class-register
   (make-e2wm:$pst-class
    :name   'magit
    :extend 'base
@@ -178,7 +178,7 @@
   (ad-activate-regexp "^e2wm:ad-override-magit$"))
 
 (defun e2wm:dp-magit-init ()
-  (let* ((magit-wm 
+  (let* ((magit-wm
           (wlf:no-layout e2wm:c-magit-recipe e2wm:c-magit-winfo))
          (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
@@ -191,7 +191,7 @@
 
 (defun e2wm:dp-magit-popup (buf)
   (let ((cb (current-buffer)))
-    (e2wm:message "#DP MAGIT popup : %s (current %s / backup %s)" 
+    (e2wm:message "#DP MAGIT popup : %s (current %s / backup %s)"
                   buf cb e2wm:override-window-cfg-backup))
   (unless (e2wm:vcs-select-if-plugin buf)
     (let ((buf-name (buffer-name buf))
@@ -374,10 +374,10 @@
          (svndir (member ".svn" (directory-files expanded-dir))))
     (cond
      (svndir expanded-dir)
-     ((or 
+     ((or
        (string= expanded-dir "/")
        (string= expanded-dir (expand-file-name "~/"))) nil)
-     (t (let ((updir (e2wm:def-plugin-svn-top-dir 
+     (t (let ((updir (e2wm:def-plugin-svn-top-dir
                       (concat (file-name-as-directory dir) ".."))))
           (if (null updir) expanded-dir updir))))))
 
@@ -386,7 +386,7 @@
 (defun e2wm:def-plugin-svn-logs (frame wm winfo)
     (e2wm:def-plugin-vcs-with-window
      'e2wm:def-plugin-svn-top-dir
-     (lambda (dir topdir) 
+     (lambda (dir topdir)
        (let ((default-directory (file-name-as-directory topdir)))
          (svn-log e2wm:def-plugin-svn-log-arg))
        (let ((dbuf (get-buffer-create e2wm:def-plugin-svn-logs-buffer-name)))
@@ -410,7 +410,7 @@
 (defun e2wm:def-plugin-svn-status (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
    'e2wm:def-plugin-svn-top-dir
-   (lambda (dir topdir) 
+   (lambda (dir topdir)
      (svn-status (file-name-as-directory topdir)))
    (lambda () (e2wm:history-get-main-buffer))))
 
@@ -456,7 +456,7 @@
   (setq e2wm:prev-selected-buffer nil))
 
 (defun e2wm:dp-svn-init ()
-  (let* ((svn-wm 
+  (let* ((svn-wm
           (wlf:no-layout e2wm:c-svn-recipe e2wm:c-svn-winfo))
          (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
@@ -469,7 +469,7 @@
 
 (defun e2wm:dp-svn-popup (buf)
   (let ((cb (current-buffer)))
-    (e2wm:message "#DP SVN popup : %s (current %s / backup %s)" 
+    (e2wm:message "#DP SVN popup : %s (current %s / backup %s)"
                   buf cb e2wm:override-window-cfg-backup))
   (let* ((wm (e2wm:pst-get-wm))
          (bufname (buffer-name buf))
