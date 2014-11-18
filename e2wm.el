@@ -2272,7 +2272,7 @@ string object to insert the imenu buffer."
     (unless e2wm:def-plugin-clock-timer-handle
       (setq e2wm:def-plugin-clock-timer-handle
             (run-at-time
-             e2wm:def-plugin-clock-timer-interval
+             t
              e2wm:def-plugin-clock-timer-interval
              'e2wm:def-plugin-clock-timer))
       (e2wm:message "WM: 'clock' update timer started."))
