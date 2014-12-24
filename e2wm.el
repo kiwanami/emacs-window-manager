@@ -171,7 +171,7 @@
   "Return non-nil, if the buffer is an editable buffer.")
 (defvar e2wm:c-document-buffer-p ;
   (lambda (buf)
-    (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\)" (buffer-name buf)))
+    (string-match "\\*\\(Help\\|info\\|w3m\\|WoMan\\|eww\\)" (buffer-name buf)))
   "Retrun non-nil, if the buffer is a document buffer.")
 
 (defvar e2wm:c-blank-buffer-name " *e2wm:blank*"
