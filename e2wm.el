@@ -228,15 +228,20 @@ equals to NAME in the given sequence SEQ."
 ;; debug
 
 (defvar e2wm:debug nil "Debug output switch.")
-(defvar e2wm:debug-count 0 "[internal] Debug output counter.") ; debug
+(defvar e2wm:debug-count 0 "[internal] Debug output counter.")
+(defvar e2wm:debug-last-text nil "[internal] Last output text.")
 
 (defun e2wm:message (&rest args)
   "Output a message into the debug buffer: *e2wm:debug*."
   (when e2wm:debug
     (with-current-buffer (get-buffer-create "*e2wm:debug*")
       (save-excursion
-        (goto-char (point-max))
-        (insert (format "%5i %s\n" e2wm:debug-count (apply #'format args)))))
+        (let ((text (apply #'format args)))
+          (if (and e2wm:debug-last-text (string= text e2wm:debug-last-text))
+              (progn (goto-char (1- (point-max))) (insert "."))
+            (goto-char (point-max))
+            (insert (format "%5i %s\n" e2wm:debug-count text))
+            (setq e2wm:debug-last-text text)))))
     (incf e2wm:debug-count)))
 
 (defun e2wm:message-mark () ; debug
@@ -1481,8 +1486,7 @@ management. For window-layout.el.")
 (defadvice current-window-configuration (around e2wm:ad-override)
   (let ((cfg ad-do-it))
     (incf e2wm:override-window-cfg-count)
-    (e2wm:message "#CURRENT-WINDOW-CONFIGURATION %s"
-                 e2wm:override-window-cfg-count)
+    ;;(e2wm:message "#CURRENT-WINDOW-CONFIGURATION %s" e2wm:override-window-cfg-count)
     (if (e2wm:managed-p)
         (let ((data (e2wm:pst-copy-instance)))
           (setq ad-return-value
@@ -1509,7 +1513,7 @@ management. For window-layout.el.")
     ))
 
 (defadvice set-window-configuration (around e2wm:ad-override-long (cfg))
-  (e2wm:message "#SET-WINDOW-CONFIGURATION -->")
+  ;;(e2wm:message "#SET-WINDOW-CONFIGURATION -->")
   (cond
    ((e2wm:override-custom-wcfg-p cfg)
     ;;管理対象であればwindowオブジェクトを元に戻す
@@ -1536,7 +1540,8 @@ management. For window-layout.el.")
       (e2wm:pst-finish)
       (e2wm:pst-set-instance nil))
     ad-do-it))
-  (e2wm:message "#SET-WINDOW-CONFIGURATION <-- %s" ad-return-value))
+  ;;(e2wm:message "#SET-WINDOW-CONFIGURATION <-- %s" ad-return-value)
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
