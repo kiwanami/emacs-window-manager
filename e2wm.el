@@ -1730,35 +1730,32 @@ management. For window-layout.el.")
         (buffer-disable-undo buf)
         (hl-line-mode 1)))
     (with-current-buffer buf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (erase-buffer)
-            (goto-char (point-min))
-            (let ((history (e2wm:history-get))
-                  (history-backup (reverse (e2wm:history-get-backup)))
-                  (cnt 1))
-              (loop for h in (append history-backup history)
-                    with main-buf = (e2wm:history-get-main-buffer)
-                    for name = (if (stringp h) h (buffer-name h))
-                    do (insert
-                        (e2wm:tp
-                         (e2wm:rt
-                          (format
-                           "%3s %s %s\n" cnt name
-                           (if (buffer-modified-p h) "*" ""))
-                          (if (eql h main-buf) 'e2wm:face-history-list-select1
-                            'e2wm:face-history-list-normal))
-                         'e2wm:buffer h))
-                    (incf cnt))
-              (goto-line (1+ (length history-backup)))
-              (setq current-pos (point))
-              (setq mode-line-format
-                    '("-" mode-line-mule-info
-                      " " mode-line-position "-%-"))
-              (setq header-line-format
-                    (format "Buffer History [%i]" (1- cnt)))))
-        (setq buffer-read-only t)))
+      (let (buffer-read-only)
+        (erase-buffer)
+        (goto-char (point-min))
+        (let ((history (e2wm:history-get))
+              (history-backup (reverse (e2wm:history-get-backup)))
+              (cnt 1))
+          (loop for h in (append history-backup history)
+                with main-buf = (e2wm:history-get-main-buffer)
+                for name = (if (stringp h) h (buffer-name h))
+                do (insert
+                    (e2wm:tp
+                     (e2wm:rt
+                      (format
+                       "%3s %s %s\n" cnt name
+                       (if (buffer-modified-p h) "*" ""))
+                      (if (eql h main-buf) 'e2wm:face-history-list-select1
+                        'e2wm:face-history-list-normal))
+                     'e2wm:buffer h))
+                (incf cnt))
+          (goto-line (1+ (length history-backup)))
+          (setq current-pos (point))
+          (setq mode-line-format
+                '("-" mode-line-mule-info
+                  " " mode-line-position "-%-"))
+          (setq header-line-format
+                (format "Buffer History [%i]" (1- cnt))))))
     (wlf:set-buffer wm wname buf)
     (when win (set-window-point win current-pos))))
 
@@ -1839,42 +1836,39 @@ management. For window-layout.el.")
         (buffer-disable-undo buf)
         (hl-line-mode 1)))
     (with-current-buffer buf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (setq current-pos (point))
-            (erase-buffer)
-            (goto-char (point-min))
-            (let* ((history (e2wm:history-get))
-                   (history-backup (reverse (e2wm:history-get-backup)))
-                   (main-buf   (wlf:get-buffer wm 'left))
-                   (second-buf (wlf:get-buffer wm 'right))
-                   (cnt 1))
-              (loop for h in (append history-backup history)
-                    for name = (if (stringp h) h (buffer-name h))
-                    do (insert
-                        (e2wm:tp
-                         (e2wm:rt
-                          (format
-                           "%2s%2s %2s %s %s\n"
-                           (if (eql h main-buf) "<-" "")
-                           (if (eql h second-buf) "->" "")
-                           cnt name
-                           (if (buffer-modified-p h) "*" ""))
-                          (cond
-                           ((eql h main-buf) 'e2wm:face-history-list-select1)
-                           ((eql h second-buf) 'e2wm:face-history-list-select2)
-                           (t
-                            'e2wm:face-history-list-normal)))
-                         'e2wm:buffer h))
-                    (incf cnt))
-              (goto-char current-pos)
-              (setq mode-line-format
-                    '("-" mode-line-mule-info
-                      " " mode-line-position "-%-"))
-              (setq header-line-format
-                    (format "Buffer History [%i]" (1- cnt)))))
-        (setq buffer-read-only t)))
+      (let (buffer-read-only)
+        (setq current-pos (point))
+        (erase-buffer)
+        (goto-char (point-min))
+        (let* ((history (e2wm:history-get))
+               (history-backup (reverse (e2wm:history-get-backup)))
+               (main-buf   (wlf:get-buffer wm 'left))
+               (second-buf (wlf:get-buffer wm 'right))
+               (cnt 1))
+          (loop for h in (append history-backup history)
+                for name = (if (stringp h) h (buffer-name h))
+                do (insert
+                    (e2wm:tp
+                     (e2wm:rt
+                      (format
+                       "%2s%2s %2s %s %s\n"
+                       (if (eql h main-buf) "<-" "")
+                       (if (eql h second-buf) "->" "")
+                       cnt name
+                       (if (buffer-modified-p h) "*" ""))
+                      (cond
+                       ((eql h main-buf) 'e2wm:face-history-list-select1)
+                       ((eql h second-buf) 'e2wm:face-history-list-select2)
+                       (t
+                        'e2wm:face-history-list-normal)))
+                     'e2wm:buffer h))
+                (incf cnt))
+          (goto-char current-pos)
+          (setq mode-line-format
+                '("-" mode-line-mule-info
+                  " " mode-line-position "-%-"))
+          (setq header-line-format
+                (format "Buffer History [%i]" (1- cnt))))))
     (wlf:set-buffer wm wname buf)
     (when win (set-window-point win current-pos))))
 
@@ -1982,21 +1976,18 @@ management. For window-layout.el.")
         (hl-line-mode 1))
       (e2wm:def-plugin-imenu-start-timer))
     (with-current-buffer buf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (setq pos (point))
-            (erase-buffer)
-            (loop for i in entries
-                  do (insert i "\n"))
-            (setq mode-line-format
-                  '("-" mode-line-mule-info
-                    " " mode-line-position "-%-"))
-            (setq header-line-format
-                  (format "Imenu entries [%i]" (length entries)))
-            (goto-char pos)
-            (hl-line-highlight))
-        (setq buffer-read-only t)))
+      (let (buffer-read-only)
+        (setq pos (point))
+        (erase-buffer)
+        (loop for i in entries
+              do (insert i "\n"))
+        (setq mode-line-format
+              '("-" mode-line-mule-info
+                " " mode-line-position "-%-"))
+        (setq header-line-format
+              (format "Imenu entries [%i]" (length entries)))
+        (goto-char pos)
+        (hl-line-highlight)))
     (wlf:set-buffer wm wname buf)
     (set-window-point (wlf:get-window wm wname) pos)))
 
@@ -2442,18 +2433,15 @@ string object to insert the imenu buffer."
         (setq pos (point-min))
         (hl-line-mode 1)))
     (with-current-buffer dbuf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (setq pos
-                  (if (and e2wm:def-plugin-files-dir
-                           (equal e2wm:def-plugin-files-dir dir))
-                      (point) (point-min)))
-            (setq e2wm:def-plugin-files-dir dir)
-            (erase-buffer)
-            (e2wm:def-plugin-files-update-buffer dir)
-            (goto-char pos))
-        (setq buffer-read-only t)))
+      (let (buffer-read-only)
+        (setq pos
+              (if (and e2wm:def-plugin-files-dir
+                       (equal e2wm:def-plugin-files-dir dir))
+                  (point) (point-min)))
+        (setq e2wm:def-plugin-files-dir dir)
+        (erase-buffer)
+        (e2wm:def-plugin-files-update-buffer dir)
+        (goto-char pos)))
     (wlf:set-buffer wm wname dbuf)))
 
 (e2wm:plugin-register 'files
@@ -2481,13 +2469,10 @@ string object to insert the imenu buffer."
   (interactive)
   ;;カレントバッファが対象のバッファである前提
   (when (eq major-mode 'e2wm:def-plugin-files-mode)
-    (unwind-protect
-        (progn
-          (setq buffer-read-only nil)
-          (erase-buffer)
-          (e2wm:def-plugin-files-update-buffer e2wm:def-plugin-files-dir)
-          (goto-char (point-min)))
-      (setq buffer-read-only t))))
+    (let (buffer-read-only)
+      (erase-buffer)
+      (e2wm:def-plugin-files-update-buffer e2wm:def-plugin-files-dir)
+      (goto-char (point-min)))))
 
 (defun e2wm:def-plugin-files-sort (records order)
   (let*
@@ -3442,13 +3427,10 @@ Do not select the buffer."
         (setq buffer-read-only t)
         (buffer-disable-undo buf)))
     (with-current-buffer buf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (erase-buffer)
-            (goto-char (point-min))
-            (e2wm:dp-dashboard-insert-summary-info))
-        (setq buffer-read-only t)))
+      (let (buffer-read-only)
+        (erase-buffer)
+        (goto-char (point-min))
+        (e2wm:dp-dashboard-insert-summary-info)))
     (wlf:set-buffer wm 'summary buf)))
 
 (defun e2wm:dp-dashboard-parse-garbage-collect-1 (gc-info)
@@ -3799,15 +3781,12 @@ Do not select the buffer."
         (setq buffer-read-only t)
         (buffer-disable-undo buf)))
     (with-current-buffer buf
-      (unwind-protect
-          (progn
-            (setq buffer-read-only nil)
-            (erase-buffer)
-            (goto-char (point-min))
-            (unless (eql selected-buf buf)
-              (e2wm:dp-array-insert-summary-info
-               selected-buf))
-        (setq buffer-read-only t))))
+      (let (buffer-read-only)
+        (erase-buffer)
+        (goto-char (point-min))
+        (unless (eql selected-buf buf)
+          (e2wm:dp-array-insert-summary-info
+           selected-buf))))
     (wlf:set-buffer wm 'summary buf))
   (e2wm:dp-array-hilite-focus))
 
