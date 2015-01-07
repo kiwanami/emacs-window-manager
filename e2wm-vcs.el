@@ -425,20 +425,20 @@
 ;;;--------------------------------------------------
 
 (defvar e2wm:c-svn-recipe
-  '(| (:left-max-size 35)
-      (- (:upper-size-ratio 0.7)
-         files history)
-      (| (:right-max-size 45)
-         (- status (- main sub))
-         logs)))
+  '(| (:left-size-ratio 0.3)
+      status
+      (| (:left-size-ratio 0.2)
+         (- (:upper-size-ratio 0.5)
+            logs main)
+         (| (:left-size-ratio 0.1)
+            diff sub))))
 
 (defvar e2wm:c-svn-winfo
-  '((:name main)
-    (:name status   :plugin svn-status)
-    (:name files    :plugin files)
-    (:name history  :plugin history-list)
-    (:name sub      :buffer nil :default-hide t)
-    (:name logs     :plugin svn-logs :default-hide t)))
+  '((:name status :plugin svn-status)
+    (:name logs   :plugin svn-logs)
+    (:name main)
+    (:name diff   :buffer "*svn output*" :default-hide t)
+    (:name sub    :buffer nil :default-hide t)))
 
 (defvar e2wm:c-svn-focus-buffer-regexp "\\*\\(svn commit\\)\\*")
 
@@ -448,7 +448,7 @@
    :extend 'base
    :title  "Svn"
    :init   'e2wm:dp-svn-init
-   :main   'main
+   :main   'status
    :switch 'e2wm:dp-svn-switch
    :popup  'e2wm:dp-svn-popup
    :leave  'e2wm:dp-svn-leave
@@ -463,16 +463,34 @@
          (buf (or e2wm:prev-selected-buffer
                   (e2wm:history-get-main-buffer))))
     (wlf:set-buffer svn-wm 'main buf)
+    (wlf:select svn-wm 'status)
     svn-wm))
 
 (defun e2wm:dp-svn-switch (buf)
   (e2wm:message "#DP SVN switch : %s" buf)
-  (e2wm:vcs-select-if-plugin buf))
+  (cond ((e2wm:history-recordable-p buf)
+         (e2wm:with-advice
+          (e2wm:pst-buffer-set 'main buf t t)))
+        ((string= (buffer-name buf) "*log-edit-files*")
+         nil)
+        (t
+         (or (e2wm:vcs-select-if-plugin buf)
+             (e2wm:dp-svn-popup-sub buf)))))
 
 (defun e2wm:dp-svn-popup (buf)
   (let ((cb (current-buffer)))
     (e2wm:message "#DP SVN popup : %s (current %s / backup %s)"
                   buf cb e2wm:override-window-cfg-backup))
+  (cond ((e2wm:history-recordable-p buf)
+         (e2wm:with-advice
+          (e2wm:pst-buffer-set 'main buf t t)))
+        ((string= (buffer-name buf) "*svn output*")
+         (e2wm:with-advice
+          (e2wm:pst-buffer-set 'diff buf t t)))
+        (t
+         (e2wm:dp-svn-popup-sub buf))))
+
+(defun e2wm:dp-svn-popup-sub (buf)
   (let* ((wm (e2wm:pst-get-wm))
          (bufname (buffer-name buf))
          (focus-set (and (= 0 (minibuffer-depth))
