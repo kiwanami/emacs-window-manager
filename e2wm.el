@@ -227,7 +227,7 @@ equals to NAME in the given sequence SEQ."
 
 ;; debug
 
-(defvar e2wm:debug nil "Debug output switch.")
+(defvar e2wm:debug nil "Debug output switch.") ; (setq e2wm:debug t)
 (defvar e2wm:debug-count 0 "[internal] Debug output counter.")
 (defvar e2wm:debug-last-text nil "[internal] Last output text.")
 
@@ -463,6 +463,10 @@ sequence. ROWS is a list of string."
   (loop for buf in history
         when (buffer-live-p buf)
         collect buf))
+
+(defun e2wm:buffer-completion-p (buf)
+  "[internal] If `buf' is completion buffer, return not nil."
+  (string-match "\\*Completions\\*" (buffer-name buf)))
 
 (defun e2wm:history-recordable-p (buffer)
   "If BUFFER should be record in buffer history, return t.
@@ -2898,6 +2902,16 @@ string object to insert the imenu buffer."
            (string-match e2wm:c-code-show-main-regexp buf-name))
       (e2wm:pst-buffer-set 'main buf t)
       t)
+     ;; For completion buffer (ad-hoc fix)
+     ((and (= 0 (minibuffer-depth))
+           (string-match "\\*Completions\\*" (buffer-name buf)))
+      (let ((wm (e2wm:pst-get-wm))
+            (curwin (selected-window))
+            (e2wm:delete-other-windows-permission t))
+        (delete-other-windows curwin)
+        (wlf:show wm 'sub)
+        (wlf:set-buffer wm 'sub buf t))
+      t)
      (t
       (e2wm:dp-code-popup-sub buf)
       t))))
@@ -2910,9 +2924,11 @@ string object to insert the imenu buffer."
 
 (defun e2wm:dp-code-after-bury (buried-buffer window)
   "Close sub window if it is the current window."
+  (e2wm:message "#DP CODE AFTER BURY %s %s" buried-buffer window)
   (e2wm:$pst-class-super)
   (let ((wm (e2wm:pst-get-wm)))
-    (when (eq (wlf:get-window-name wm window) 'sub)
+    (when (or (e2wm:buffer-completion-p buried-buffer)
+              (eq (wlf:get-window-name wm window) 'sub))
       (wlf:hide wm 'sub)
       (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
@@ -3082,15 +3098,27 @@ Do not select the buffer."
         (e2wm:pst-buffer-set 'left buf)))
     (e2wm:pst-update-windows)           ; update plugins, etc.
     t)
+   ;; For completion buffer (ad-hoc fix)
+   ((and (= 0 (minibuffer-depth))
+         (e2wm:buffer-completion-p buf))
+    (let ((wm (e2wm:pst-get-wm))
+          (curwin (selected-window))
+          (e2wm:delete-other-windows-permission t))
+      (delete-other-windows curwin)
+      (wlf:show wm 'sub)
+      (wlf:set-buffer wm 'sub buf t))
+    t)
    (t
     (e2wm:pst-buffer-set 'sub buf t)
     t)))
 
 (defun e2wm:dp-two-after-bury (buried-buffer window)
   "Close sub window if it is the current window."
+  (e2wm:message "#DP CODE AFTER BURY %s %s" buried-buffer window)
   (e2wm:$pst-class-super)
   (let ((wm (e2wm:pst-get-wm)))
-    (when (eq (wlf:get-window-name wm window) 'sub)
+    (when (or (e2wm:buffer-completion-p buried-buffer)
+              (eq (wlf:get-window-name wm window) 'sub))
       (wlf:hide wm 'sub)
       (wlf:select wm (e2wm:$pst-main (e2wm:pst-get-instance))))))
 
@@ -3130,6 +3158,15 @@ Do not select the buffer."
   (interactive)
   (e2wm:pst-buffer-set 'right (e2wm:history-get-main-buffer))
   (e2wm:dp-two-update-history-list))
+
+(defun e2wm:dp-two-get-right-buffer ()
+  (let ((rbuf (e2wm:pst-buffer-get 'right)))
+    (e2wm:aif (member rbuf (append (e2wm:history-get) (e2wm:history-get-backup)))
+        (car it)
+      (or
+       (car (e2wm:history-get))
+       (car (e2wm:history-get-backup))
+       rbuf))))
 
 (defun e2wm:dp-two-right-history-forward-command ()
   (interactive)
