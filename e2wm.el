@@ -3171,15 +3171,13 @@ Do not select the buffer."
 (defun e2wm:dp-two-right-history-forward-command ()
   (interactive)
   (e2wm:pst-buffer-set
-   'right (e2wm:history-get-next
-           (e2wm:pst-buffer-get 'right)))
+   'right (e2wm:history-get-next (e2wm:dp-two-get-right-buffer)))
   (e2wm:dp-two-update-history-list))
 
 (defun e2wm:dp-two-right-history-back-command ()
   (interactive)
   (e2wm:pst-buffer-set
-   'right (e2wm:history-get-prev
-           (e2wm:pst-buffer-get 'right)))
+   'right (e2wm:history-get-prev (e2wm:dp-two-get-right-buffer)))
   (e2wm:dp-two-update-history-list))
 
 (defalias 'e2wm:dp-two-right-history-up-command 'e2wm:dp-two-right-history-forward-command)
