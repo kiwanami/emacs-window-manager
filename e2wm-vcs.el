@@ -134,21 +134,22 @@
 ;;;--------------------------------------------------
 
 (defvar e2wm:c-magit-recipe
-  '(| (:left-max-size 35)
-      (- (:upper-size-ratio 0.7)
-         files history)
-      (| (:right-max-size 45)
-         (- status (- main sub))
-         (- (:upper-size-ratio 0.4) branches logs))))
+  '(| (:left-size-ratio 0.3)
+      (- (:upper-size-ratio 0.6)
+         status branches)
+      (| (:left-size-ratio 0.2)
+         (- (:upper-size-ratio 0.5)
+            logs main)
+         (| (:left-size-ratio 0.1)
+            diff sub))))
 
 (defvar e2wm:c-magit-winfo
-  '((:name main)
-    (:name status   :plugin magit-status)
-    (:name files    :plugin files)
-    (:name history  :plugin history-list)
-    (:name sub      :buffer nil :default-hide t)
+  '((:name status   :plugin magit-status)
     (:name branches :plugin magit-branches)
-    (:name logs     :plugin magit-logs)))
+    (:name logs     :plugin magit-logs)
+    (:name main)
+    (:name diff     :buffer "*magit-diff*" :default-hide t)
+    (:name sub      :buffer nil :default-hide t)))
 
 (defvar e2wm:c-magit-show-main-regexp
    "\\*\\(vc-diff\\)\\*")
@@ -159,7 +160,7 @@
    :extend 'base
    :title  "Magit"
    :init   'e2wm:dp-magit-init
-   :main   'main
+   :main   'status
    :start  'e2wm:dp-magit-start
    :switch 'e2wm:dp-magit-switch
    :popup  'e2wm:dp-magit-popup
@@ -187,7 +188,14 @@
 
 (defun e2wm:dp-magit-switch (buf)
   (e2wm:message "#DP MAGIT switch : %s" buf)
-  (e2wm:vcs-select-if-plugin buf))
+  (cond ((e2wm:history-recordable-p buf)
+         (e2wm:with-advice
+          (e2wm:pst-buffer-set 'main buf t t)))
+        (t
+         (or (e2wm:vcs-select-if-plugin buf)
+             (let ((not-minibufp (= 0 (minibuffer-depth))))
+               (e2wm:with-advice
+                (e2wm:pst-buffer-set 'sub buf t not-minibufp)))))))
 
 (defun e2wm:dp-magit-popup (buf)
   (let ((cb (current-buffer)))
@@ -202,11 +210,14 @@
         ((equal buf-name magit-commit-buffer-name)
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
+        ((string= (buffer-name buf) "*magit-diff*")
+         ;; displaying diff buffer in the diff window
+         (e2wm:pst-buffer-set 'diff buf t t))
         ((string-match "^\\*magit: .*\\*$" buf-name)
          ;; displaying status object in the status window
          (e2wm:pst-buffer-set 'status buf t t))
-        ((buffer-file-name buf)
-         ;; displaying file buffer in the main window
+        ((e2wm:history-recordable-p buf)
+         ;; displaying recordable buffer in the main window
          (e2wm:pst-buffer-set 'main buf t t))
         (t
          ;; displaying other objects in the sub window
