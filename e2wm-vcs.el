@@ -71,14 +71,15 @@
       (topdir
        (with-selected-window (wlf:get-window wm (wlf:window-name winfo))
          (with-current-buffer buf
-           (funcall body-func dir topdir))
+           (funcall body-func dir topdir)
+           (goto-char (point-min)))
          (wlf:set-buffer wm (wlf:window-name winfo)
                          (window-buffer (selected-window)))))
       (t
        (wlf:set-buffer wm (wlf:window-name winfo)
                        (funcall na-buffer-func)))))))
 
-(defvar e2wm:c-vcs-select-if-plugin nil "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
+(defvar e2wm:c-vcs-select-if-plugin t "If this variable is non-nil, the plugin window is selected during popping up the plugin buffer.")
 
 (defun e2wm:vcs-select-if-plugin (buf)
   (e2wm:message "#vcs-select-if-plugin")
@@ -97,10 +98,10 @@
 
 (defun e2wm:def-plugin-magit-branches (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   'magit-toplevel
    (if (fboundp 'magit-branch-manager)
        (lambda (dir topdir) (magit-branch-manager))
-     (lambda (dir topdir) (magit-show-branches)))
+     (lambda (dir topdir) (magit-show-refs-current)))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
 
 (e2wm:plugin-register 'magit-branches
@@ -109,9 +110,9 @@
 
 (defun e2wm:def-plugin-magit-logs (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   'magit-toplevel
    (lambda (dir topdir)
-     (magit-log nil))
+     (magit-log (magit-log-read-revs t) '("--graph" "--color" "--decorate" "-n100")))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
 
 (e2wm:plugin-register 'magit-logs
@@ -120,9 +121,9 @@
 
 (defun e2wm:def-plugin-magit-status (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   'magit-toplevel
    (lambda (dir topdir)
-     (magit-status (file-name-as-directory dir)))
+     (magit-status topdir))
    (lambda () (e2wm:history-get-main-buffer))))
 
 (e2wm:plugin-register 'magit-status
@@ -187,7 +188,8 @@
 
 (defun e2wm:dp-magit-switch (buf)
   (e2wm:message "#DP MAGIT switch : %s" buf)
-  (e2wm:vcs-select-if-plugin buf))
+  (unless (e2wm:vcs-select-if-plugin buf)
+    (e2wm:pst-buffer-set 'main buf t t)))
 
 (defun e2wm:dp-magit-popup (buf)
   (let ((cb (current-buffer)))
@@ -199,10 +201,10 @@
           (not-minibufp (= 0 (minibuffer-depth))))
       (e2wm:with-advice
        (cond
-        ((equal buf-name magit-commit-buffer-name)
+        ((string-match "^\\*magit-diff: .*$" buf-name)
          ;; displaying commit objects in the main window
-         (e2wm:pst-buffer-set 'main buf t nil))
-        ((string-match "^\\*magit: .*\\*$" buf-name)
+         (e2wm:pst-buffer-set 'status buf t nil))
+        ((string-match "^\\*magit: .*$" buf-name)
          ;; displaying status object in the status window
          (e2wm:pst-buffer-set 'status buf t t))
         ((buffer-file-name buf)
