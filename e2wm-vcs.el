@@ -95,9 +95,14 @@
 ;;; magit / plugins
 ;;;--------------------------------------------------
 
+(defun e2wm:magit-top-dir-function ()
+  (loop for f in '(magit-get-top-dir magit-toplevel)
+        if (fboundp f)
+        return f))
+
 (defun e2wm:def-plugin-magit-branches (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   (e2wm:magit-top-dir-function)
    (if (fboundp 'magit-branch-manager)
        (lambda (dir topdir) (magit-branch-manager))
      (lambda (dir topdir) (magit-show-branches)))
@@ -109,7 +114,7 @@
 
 (defun e2wm:def-plugin-magit-logs (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   (e2wm:magit-top-dir-function)
    (lambda (dir topdir)
      (magit-log nil))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
@@ -120,7 +125,7 @@
 
 (defun e2wm:def-plugin-magit-status (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
-   'magit-get-top-dir
+   (e2wm:magit-top-dir-function)
    (lambda (dir topdir)
      (magit-status (file-name-as-directory dir)))
    (lambda () (e2wm:history-get-main-buffer))))
