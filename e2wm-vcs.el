@@ -195,11 +195,13 @@
                   buf cb e2wm:override-window-cfg-backup))
   (unless (e2wm:vcs-select-if-plugin buf)
     (let ((buf-name (buffer-name buf))
+          (buf-file-name (ignore-errors
+                           (file-name-nondirectory (buffer-file-name buf))))
           (wm (e2wm:pst-get-wm))
           (not-minibufp (= 0 (minibuffer-depth))))
       (e2wm:with-advice
        (cond
-        ((equal buf-name magit-commit-buffer-name)
+        ((equal buf-file-name "COMMIT_EDITMSG")
          ;; displaying commit objects in the main window
          (e2wm:pst-buffer-set 'main buf t nil))
         ((string-match "^\\*magit: .*\\*$" buf-name)
