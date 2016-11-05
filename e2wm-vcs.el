@@ -122,7 +122,9 @@
   (e2wm:def-plugin-vcs-with-window
    'magit-get-top-dir
    (lambda (dir topdir)
-     (magit-status (file-name-as-directory dir)))
+     (loop for f in '(magit-status-internal magit-status)
+           if (fboundp f)
+           return (funcall f (file-name-as-directory dir))))
    (lambda () (e2wm:history-get-main-buffer))))
 
 (e2wm:plugin-register 'magit-status
