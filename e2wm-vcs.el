@@ -98,9 +98,10 @@
 (defun e2wm:def-plugin-magit-branches (frame wm winfo)
   (e2wm:def-plugin-vcs-with-window
    'magit-get-top-dir
-   (if (fboundp 'magit-branch-manager)
-       (lambda (dir topdir) (magit-branch-manager))
-     (lambda (dir topdir) (magit-show-branches)))
+   (lambda (dir topdir)
+     (dolist (f '(magit-show-branches magit-branch-manager magit-show-refs-head))
+       (when (fboundp f)
+         (funcall f))))
    (lambda () (e2wm:def-plugin-vcs-na-buffer "Git N/A"))))
 
 (e2wm:plugin-register 'magit-branches
