@@ -466,7 +466,7 @@ sequence. ROWS is a list of string."
 
 (defun e2wm:buffer-completion-p (buf)
   "[internal] If `buf' is completion buffer, return not nil."
-  (string-match "\\*Completions\\*" (buffer-name buf)))
+  (and buf (string-match "\\*Completions\\*" (buffer-name buf))))
 
 (defun e2wm:history-recordable-p (buffer)
   "If BUFFER should be record in buffer history, return t.
