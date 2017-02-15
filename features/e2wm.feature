@@ -43,7 +43,7 @@ Feature: Simple window management
     Given I enabled e2wm
     When I switch to "stwo" perspective
     Then I should be in window "left"
-     And I switch to a buffer "recordable-1"
+     And I switch to buffer "recordable-1"
     When I have a popup buffer "recordable-2"
     Then I should be in window "right"
      And I should be in buffer "recordable-2"
@@ -54,7 +54,7 @@ Feature: Simple window management
     Given I enabled e2wm
     When I switch to "stwo" perspective
      And I switch to window "right"
-     And I switch to a buffer "recordable-1"
+     And I switch to buffer "recordable-1"
     When I have a popup buffer "recordable-2"
     Then I should be in window "left"
      And I should be in buffer "recordable-2"
@@ -65,7 +65,7 @@ Feature: Simple window management
     Given I enabled e2wm
     When I switch to "stwo" perspective
     Then I should be in window "left"
-     And I switch to a buffer "recordable-1"
+     And I switch to buffer "recordable-1"
      And I execute a command that reopens buffer "recordable-2" in other window
     Then I should be in window "right"
      And I should be in buffer "recordable-2"
@@ -75,7 +75,7 @@ Feature: Simple window management
   Scenario: Killing the blank buffer should not cause a problem (#42)
     Given I enabled e2wm
     When I switch to "code" perspective
-     And I switch to a buffer " *e2wm:blank*"
+     And I switch to buffer " *e2wm:blank*"
      And I press "C-x k RET"
      And I switch to buffer "recordable"
      And I press "C-x k RET"
