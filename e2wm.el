@@ -1061,14 +1061,15 @@ defined by the perspective."
   "[internal] The value of `display-buffer-function' when E2WM is enabled.")
 (defvar e2wm:pst-minor-mode nil) ; dummy
 
+(defvar e2wm:pst-mode-line-format " E2wm(%s)" "Mode line format for e2wm.")
+
 ;;グローバルでマイナーモードを定義
 (define-minor-mode e2wm:pst-minor-mode
   "Perspective mode"
   :init-value nil
   :global t
-  :lighter (:eval (if (e2wm:managed-p)
-                      (format " E2wm(%s)" (e2wm:$pst-name (e2wm:pst-get-instance)))
-                    " E2wm(none)"))
+  :lighter (:eval (format e2wm:pst-mode-line-format
+                          (if (e2wm:managed-p) (e2wm:$pst-name (e2wm:pst-get-instance)) "none")))
   :keymap e2wm:pst-minor-mode-keymap
   :group 'e2wm:pst-mode
   (if e2wm:pst-minor-mode
