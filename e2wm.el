@@ -3,7 +3,7 @@
 ;; Copyright (C) 2010-2017  SAKURAI Masashi
 
 ;; Author: SAKURAI Masashi <m.sakurai atmark kiwanami.net>
-;; Version: 1.3
+;; Version: 1.4
 ;; Keywords: tools, window manager
 ;; Package-Requires: ((window-layout "1.4"))
 
